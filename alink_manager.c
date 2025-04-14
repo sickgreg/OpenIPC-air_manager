@@ -17,11 +17,8 @@
  *   confirm_channel_change         - confirms pending channel change
  *   set_video_mode <size> <fps> <exposure> '<crop>'
  *                                 - atomically set video parameters
- *   stop_msposd                    - stop the msposd process
- *   start_msposd                   - start the msposd process
- *   adjust_txprofiles              - adjust txprofiles.conf and restart alink_drone
- *   adjust_alink                   - adjust alink.conf and restart alink_drone
- *   info                           - return current configuration and status info
+ *   restart_wfb                    - restart wifibroadcast and request idr.
+ *   restart_msposd                 - restart the msposd process using wifibroadcast
  *
  * Use the --verbose flag on the command line to output detailed debug messages.
  */
@@ -316,27 +313,15 @@ void process_command(const char *cmd, char *response, size_t resp_size) {
                      "Invalid set_video_mode command. Format: set_video_mode <size> <fps> <exposure> '<crop>'");
         }
     }
-    else if (strncmp(command, "stop_msposd", 11) == 0) {
-        int ret = system("killall msposd");
-        snprintf(response, resp_size, ret == 0 ? "msposd stopped." : "Error stopping msposd.");
+    // New restart_wfb command.
+    else if (strncmp(command, "restart_wfb", 11) == 0) {
+        int ret = system("sh -c \"wifibroadcast stop && sleep 1 && wifibroadcast start && sleep 2 && curl localhost/request/idr\"");
+        snprintf(response, resp_size, ret == 0 ? "wfb restarted successfully." : "Error restarting wfb.");
     }
-    else if (strncmp(command, "start_msposd", 12) == 0) {
-        // For now, assume msposd is started by executing its binary.
-        int ret = system("/usr/bin/msposd > /dev/null &");
-        snprintf(response, resp_size, ret == 0 ? "msposd started." : "Error starting msposd.");
-    }
-    else if (strncmp(command, "adjust_txprofiles", 17) == 0) {
-        int ret = system("sed -i 's/old_value/new_value/g' /etc/txprofiles.conf && killall alink_drone && /usr/bin/alink_drone > /dev/null &");
-        snprintf(response, resp_size, ret == 0 ? "txprofiles.conf adjusted and alink_drone restarted." : "Error adjusting txprofiles.conf.");
-    }
-    else if (strncmp(command, "adjust_alink", 12) == 0) {
-        int ret = system("sed -i 's/old_value/new_value/g' /etc/alink.conf && killall alink_drone && /usr/bin/alink_drone > /dev/null &");
-        snprintf(response, resp_size, ret == 0 ? "alink.conf adjusted and alink_drone restarted." : "Error adjusting alink.conf.");
-    }
-    else if (strncmp(command, "info", 4) == 0) {
-        snprintf(response, resp_size,
-                 "Current config:\n  Channel: %d\n  Resolution: %s\n  FPS: %d\n  Wifi: wlan0\n  SoC: ExampleSoC",
-                 current_channel, current_resolution, current_fps);
+    // Replace stop_msposd and start_msposd with restart_msposd command.
+    else if (strncmp(command, "restart_msposd", 14) == 0) {
+        int ret = system("wifibroadcast restart_msposd");
+        snprintf(response, resp_size, ret == 0 ? "msposd restarted." : "Error restarting msposd.");
     }
     else {
         snprintf(response, resp_size, "Unknown command.");

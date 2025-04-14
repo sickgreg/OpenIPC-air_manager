@@ -101,70 +101,115 @@ void print_help(const char *prog) {
     );
 }
 
-// Send a command to the server and read its response.
-int send_command_get_response(const char *server_ip, const char *command, char *response, size_t resp_size) {
-    int sock;
+#define CONNECT_TIMEOUT   2   // seconds to wait per connect()
+#define MAX_CONNECT_TRIES 3   // how many times to retry
+
+// Attempts a non-blocking connect with a timeout.
+// Returns 0 on success, -1 on failure (errno set appropriately).
+static int connect_with_timeout(int sock, 
+                                const struct sockaddr_in *addr, 
+                                socklen_t addrlen, 
+                                int timeout_secs)
+{
+    int flags, res, err;
+    socklen_t errlen;
+
+    // 1) make socket non-blocking
+    if ((flags = fcntl(sock, F_GETFL, 0)) < 0) return -1;
+    if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0) return -1;
+
+    // 2) start connect()
+    res = connect(sock, (const struct sockaddr*)addr, addrlen);
+    if (res < 0 && errno == EINPROGRESS) {
+        // 3) wait for it to become writable
+        fd_set wfds;
+        struct timeval tv = { timeout_secs, 0 };
+        FD_ZERO(&wfds);
+        FD_SET(sock, &wfds);
+        res = select(sock + 1, NULL, &wfds, NULL, &tv);
+        if (res <= 0) {
+            // timeout or select error
+            errno = (res == 0 ? ETIMEDOUT : errno);
+            goto fail;
+        }
+        // 4) check actual connect() result
+        err = 0; errlen = sizeof(err);
+        if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &errlen) < 0) {
+            goto fail;
+        }
+        if (err) {
+            errno = err;
+            goto fail;
+        }
+    }
+    else if (res < 0) {
+        // immediate error other than EINPROGRESS
+        goto fail;
+    }
+
+    // 5) restore flags
+    if (fcntl(sock, F_SETFL, flags) < 0) return -1;
+    return 0;
+
+fail:
+    // restore blocking just in case
+    fcntl(sock, F_SETFL, flags);
+    return -1;
+}
+
+int send_command_get_response(const char *server_ip,
+                              const char *command,
+                              char *response,
+                              size_t resp_size)
+{
+    int sock, attempt;
     struct sockaddr_in server_addr;
     struct timeval tv;
 
-    if (verbose) printf("[DEBUG] Creating socket...\n");
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        perror("Socket creation error");
-        return -1;
-    }
-
-    // Set the socket to non-blocking mode.
-    int flags = fcntl(sock, F_GETFL, 0);
-    fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-
+    // Prepare address struct once
+    memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(PORT);
+    server_addr.sin_port   = htons(PORT);
     if (inet_pton(AF_INET, server_ip, &server_addr.sin_addr) <= 0) {
         perror("Invalid address");
-        close(sock);
         return -1;
     }
 
-    if (verbose) printf("[DEBUG] Connecting to %s:%d...\n", server_ip, PORT);
-    int ret = connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
-    if (ret < 0) {
-        if (errno == EINPROGRESS) {
-            // Connection is in progress; use select to wait for timeout
-            fd_set fdset;
-            FD_ZERO(&fdset);
-            FD_SET(sock, &fdset);
-            tv.tv_sec = 5;  // timeout set to 5 seconds
-            tv.tv_usec = 0;
-            ret = select(sock + 1, NULL, &fdset, NULL, &tv);
-            if (ret <= 0) {
-                // Timeout or select error
-                close(sock);
-                snprintf(response, resp_size,
-                         "Could not reach alink_manager running on camera.  Check tunnel.  Check alink_manager startup");
-                return -1;
-            }
-            // Check if the connection has really been established
-            int so_error;
-            socklen_t len = sizeof(so_error);
-            getsockopt(sock, SOL_SOCKET, SO_ERROR, &so_error, &len);
-            if (so_error != 0) {
-                close(sock);
-                snprintf(response, resp_size,
-                         "Could not reach alink_manager running on camera.  Check tunnel.  Check alink_manager startup");
-                return -1;
-            }
-        } else {
-            close(sock);
-            snprintf(response, resp_size,
-                     "Could not reach alink_manager running on camera.  Check tunnel.  Check alink_manager startup");
+    for (attempt = 1; attempt <= MAX_CONNECT_TRIES; ++attempt) {
+        if (verbose) printf("[DEBUG] Creating socket (try %d)...\n", attempt);
+        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+            perror("Socket creation error");
             return -1;
         }
+
+        // 2s recv timeout (unchanged)
+        tv.tv_sec  = CONNECT_TIMEOUT;
+        tv.tv_usec = 0;
+        setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+        if (verbose) printf("[DEBUG] Connecting to %s:%d (try %d)...\n",
+                            server_ip, PORT, attempt);
+
+        if (connect_with_timeout(sock, &server_addr, sizeof(server_addr),
+                                 CONNECT_TIMEOUT) == 0) {
+            // success!
+            break;
+        }
+
+        perror("[DEBUG] connect() failed");
+        close(sock);
+
+        if (attempt == MAX_CONNECT_TRIES) {
+            fprintf(stderr, "Failed to connect after %d attempts\n",
+                    MAX_CONNECT_TRIES);
+            return -1;
+        }
+
+        // small back‑off before retrying
+        sleep(1);
     }
 
-    // Set the socket back to blocking mode.
-    fcntl(sock, F_SETFL, flags);
-
-    if (verbose) printf("[DEBUG] Connected to %s:%d\n", server_ip, PORT);
+    // At this point `sock` is connected.
     if (verbose) printf("[DEBUG] Sending command: %s\n", command);
     if (send(sock, command, strlen(command), 0) < 0) {
         perror("Send failed");
@@ -182,6 +227,7 @@ int send_command_get_response(const char *server_ip, const char *command, char *
     close(sock);
     return 0;
 }
+
 
 // Read NIC list from /etc/default/wifibroadcast
 char **get_nics(int *count) {
@@ -303,11 +349,11 @@ void save_new_channel_to_files(int channel) {
     
     // Report final status
     if (!success1 && !success2) {
-        fprintf(stderr, "Warning: Channel change may not persist after reboot!\n");
-    } else if (!success1) {
-        fprintf(stderr, "File %s update failed, attempting to add channel persistence to %s\n", file1, file2);
-    } else if (!success2) {
-        fprintf(stderr, "File %s update failed, attempting to add channel persistence to %s\n", file2, file1);
+        fprintf(stderr, "Warning: Could not write to either file.  Channel change will not persist after reboot!\n");
+    } else if (success1) {
+        fprintf(stderr, "Succesfully wrote new channel to %s\n", file1);
+    } else if (success2) {
+        fprintf(stderr, "Succesfully wrote new channel to %s\n", file2);
     }
 }
 
@@ -352,8 +398,8 @@ int main(int argc, char *argv[]) {
             }
             if (nics) { for (int i = 0; i < cnt; i++) free(nics[i]); free(nics); }
 
-            // send change and always print the response.
-            int ret = send_command_get_response(server_ip, command, response, sizeof(response));
+            // send change
+            send_command_get_response(server_ip, command, response, sizeof(response));
             printf("%s\n", response);
             sleep(1);
 
@@ -368,7 +414,7 @@ int main(int argc, char *argv[]) {
                     sleep(1);
                 }
                 if (ok) {
-                    ret = send_command_get_response(server_ip, "confirm_channel_change", response, sizeof(response));
+                    send_command_get_response(server_ip, "confirm_channel_change", response, sizeof(response));
                     printf("%s\n", response);
                     // make persistent after reboot
                     save_new_channel_to_files(ch);
@@ -387,8 +433,10 @@ int main(int argc, char *argv[]) {
         int fps, exposure;
         // Expected format: set_video_mode <size> <fps> <exposure> '<crop>'
         if (sscanf(command, "set_video_mode %31s %d %d '%127[^']'", size, &fps, &exposure, crop) == 4) {
-            int ret = send_command_get_response(server_ip, command, response, sizeof(response));
-            printf("%s\n", response);
+            // send it straight to server
+            if (send_command_get_response(server_ip, command, response, sizeof(response)) == 0) {
+                printf("%s\n", response);
+            }
         } else {
             fprintf(stderr, "Invalid set_video_mode format\n");
         }
@@ -396,13 +444,13 @@ int main(int argc, char *argv[]) {
     // Handle new msposd commands
     else if (strncmp(command, "stop_msposd", 11) == 0 ||
              strncmp(command, "start_msposd", 12) == 0) {
-        int ret = send_command_get_response(server_ip, command, response, sizeof(response));
-        printf("%s\n", response);
+        if (send_command_get_response(server_ip, command, response, sizeof(response)) == 0)
+            printf("%s\n", response);
     }
     // All remaining commands (start_alink, stop_alink, restart_majestic, adjust_txprofiles, adjust_alink, info, etc.)
     else {
-        int ret = send_command_get_response(server_ip, command, response, sizeof(response));
-        printf("%s\n", response);
+        if (send_command_get_response(server_ip, command, response, sizeof(response)) == 0)
+            printf("%s\n", response);
     }
 
     return 0;
