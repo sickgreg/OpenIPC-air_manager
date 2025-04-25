@@ -19,3 +19,21 @@ example command
 which is defined within and returns
 
 `50`
+
+## air_man_gs
+Communicates with air_man from the ground.  Send command, get response and exit
+
+Also has a few built in functions to negotiate channel,  set predefined video modes (size, fps, exposure and crop if any all at once), etc.
+
+Examples (where 10.5.0.10 is IP with air_man is running, ie drone)
+
+`./air_man_gs 10.5.0.10 "set air wfbng air_channel 136"`
+
+"set air wfbng air_channel" is a special case where command requires negotiation.
+It is equivelent to:
+
+`./air_man_gs 10.5.0.10 "change_channel 165"`
+
+`./air_man_gs 10.5.0.10 "set_video_mode 1920x1080 60 10 'nocrop'"`
+
+`./air_man_gs 10.5.0.10 "set_video_mode 1920x1440 60 10 '0 0 376 0 2248 1688'"`
