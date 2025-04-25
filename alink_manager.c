@@ -89,11 +89,11 @@ void read_config() {
         fclose(fp);
     } else {
         if (verbose) printf("[DEBUG] No config file found; using default channel 1.\n");
-        current_channel = 1;
+        current_channel = 165;
     }
     if (current_channel <= 0) {
         if (verbose) printf("[DEBUG] Invalid channel value (%d); defaulting to channel 1.\n", current_channel);
-        current_channel = 1;
+        current_channel = 165;
     }
 }
 
@@ -362,6 +362,9 @@ int main(int argc, char *argv[]) {
 
     int server_fd;
     struct sockaddr_in server_addr;
+
+    // Load channel from wfb.yaml
+	read_config();
 
     init_pending_changes();
 
