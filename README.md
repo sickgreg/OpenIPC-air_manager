@@ -5,9 +5,9 @@ Companion to communicate and control openipc settings, channel, video_mode, alin
 ## air_man
 air_man runs on VTX (drone) and waits for commands from ground station
 
-It has a few built in functions (with negotiation, fallback and persistence of settings) to change channel, change video mode, stop and start a few services, etc
+Has a few built in functions (with negotiation, fallback and persistence of settings) to change channel, change video mode, stop and start a few services, etc
 
-If it receives a command that it does not already recognize, it will forward that command to `air_man_cmd.sh` whose output will be send back to VRX (ground station)
+If it receives a command that it does not already recognize, it will forward that command to `air_man_cmd.sh` whose output will be sent back to VRX (ground station)
 
 ## air_man_cmd.sh
 air_man_cmd.sh defines any number of commands.  It is derived from the original gsmenu ssh command script that used to run remotely.
