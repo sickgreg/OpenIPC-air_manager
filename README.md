@@ -23,14 +23,22 @@ which is defined within and returns
 ## air_man_gs
 Communicates with air_man (and by extention, air_man_cmd.sh) from the ground.  Send command, get response and exit
 
-eg any command defined in air_man_cmd.sh
+For example, any command defined in air_man_cmd.sh
+
 `./air_man_gs 10.5.0.10 "get air camera contrast"`
+
 returns contrast value
+
 `./air_man_gs 10.5.0.10 "set air wfbng power 30"`
+
 sets power to 30
+
 `./air_man_gs 10.5.0.10 "values air camera size"`
+
 returns value
+
 `./air_man_gs 10.5.0.10 "values air telemetry serial"`
+
 returns value
 
 
@@ -44,6 +52,7 @@ It is equivelent to:
 `./air_man_gs 10.5.0.10 "change_channel 165"`
 
 `./air_man_gs 10.5.0.10 "set_video_mode 1920x1080 60 10 'nocrop'"`
+
 `./air_man_gs 10.5.0.10 "set_video_mode 1920x1440 60 10 '0 0 376 0 2248 1688'"`
 
 
