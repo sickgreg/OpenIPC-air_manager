@@ -57,8 +57,8 @@ fi
 index=$((selection - 1))
 selected_command="${mode_commands[$index]}"
 
-echo "Executing: ./alink_man_gs7f $camera_ip \"$selected_command\""
-./alink_man_gs7f "$camera_ip" "$selected_command"
-./alink_man_gs7f "$camera_ip" restart_msposd
-./alink_man_gs7f "$camera_ip" stop_alink
-./alink_man_gs7f "$camera_ip" start_alink
+echo "Executing: ./alink_man_gs $camera_ip \"$selected_command\""
+./alink_man_gs "$camera_ip" "$selected_command"
+./alink_man_gs "$camera_ip" restart_msposd
+./alink_man_gs "$camera_ip" stop_alink
+./alink_man_gs "$camera_ip" start_alink
