@@ -10,13 +10,13 @@ Has a few built in functions (with negotiation, fallback and persistence of sett
 If it receives a command that it does not already recognize, it will forward that command to `air_man_cmd.sh` whose output will be sent back to VRX (ground station)
 
 ## air_man_cmd.sh
-air_man_cmd.sh defines any number of commands.  It is derived from the original gsmenu ssh command script that used to run remotely.
+air_man_cmd.sh defines any number of commands.  It is derived from the original gsmenu ssh command script that ran commands remotely.
 
 example command
 
 `air_man_cmd.sh "get air camera contrast"`
 
-which is defined within and returns, for example
+Inner workings are defined within and will return, for example
 
 `50`
 
