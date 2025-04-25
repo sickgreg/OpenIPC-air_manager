@@ -51,8 +51,32 @@ It is equivelent to:
 
 `./air_man_gs 10.5.0.10 "change_channel 165"`
 
+attempts to set channel on both vtx and vrx, waits for confirmation and reverts back if unable to make contact
+
 `./air_man_gs 10.5.0.10 "set_video_mode 1920x1080 60 10 'nocrop'"`
 
 `./air_man_gs 10.5.0.10 "set_video_mode 1920x1440 60 10 '0 0 376 0 2248 1688'"`
 
+set video mode with or without crop and make all parameters persistent (including crop upon reboot)
 
+`"set_video_mode <size> <fps> <exposure> <'crop'>"`
+
+
+## video_modes_imx335.ini, video_modes_imx415.ini
+
+extensive list of video modes and their parameters
+
+## video_mode_chooser.sh
+
+command line tool that loads a video_modes file and displays the modes in a numbered list and calls air_man_gs upon selection
+
+`./video_mode_chooser.sh 10.5.0.10 video_modes_imx415.ini`
+
+After setting the mode, the script also runs a couple of air_man's other commands...
+
+```
+./air_man_gs "$camera_ip" restart_msposd
+./air_man_gs "$camera_ip" stop_alink
+./air_man_gs "$camera_ip" start_alink
+```
+the result is recalibrated msposd OSD size and refreshed alink with new size and fps
