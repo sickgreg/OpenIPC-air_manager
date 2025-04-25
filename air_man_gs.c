@@ -1,12 +1,12 @@
 /*
- * client.c - Command-line client for controlling alink_manager
+ * air_man_gs.c - Command-line client for controlling alink_manager
  *
  * Compile with:
- *     gcc -o client client.c
+ *     gcc -o air_man_gs air_man_gs.c
  *
  * Usage:
- *   client [--verbose] <server_ip> "<command>"
- *   client --help
+ *   air_man_gs [--verbose] <server_ip> "<command>"
+ *   air_man_gs --help
  *
  * Options:
  *   -v, --verbose   Enable debug output
@@ -72,7 +72,7 @@ void print_help(const char *prog) {
         "Options:\n"
         "  -v, --verbose   Enable debug output\n"
         "  -h, --help      Show this help message\n\n"
-        "Commands supported by the server:\n"
+        "Server commands:\n"
         "  start_alink\n"
         "      Start alink_drone on the drone.\n\n"
         "  stop_alink\n"
@@ -96,10 +96,15 @@ void print_help(const char *prog) {
         "  adjust_alink\n"
         "      Update /etc/alink.conf and restart alink_drone.\n\n"
         "  info\n"
-        "      Retrieve current configuration and status from the drone.\n",
+        "      Retrieve current configuration and status from the drone.\n\n"
+        "Menu‐script commands:\n"
+        "  <any command supported by your air_man_cmd.sh>\n"
+        "      e.g. get air camera contrast, set air wfbng power 30,\n"
+        "      values air camera size, values air telemetry serial, etc.\n",
         prog, prog
     );
 }
+
 
 #define CONNECT_TIMEOUT   2   // seconds to wait per connect()
 #define MAX_CONNECT_TRIES 3   // how many times to retry
@@ -376,7 +381,39 @@ int main(int argc, char *argv[]) {
 
     const char *server_ip = argv[optind];
     const char *command   = argv[optind+1];
-    char response[BUF_SIZE];
+    
+	//――――――――――――――――――――――――――――――
+    // Client-side intercept: map
+    //   "set air wfbng air_channel N"
+    // to
+    //   "change_channel N"
+    // so that negotiation + confirm logic applies.
+    //――――――――――――――――――――――――――――――
+    char translated_cmd[BUF_SIZE];
+    if (strncmp(command, "set air wfbng air_channel", 25) == 0) {
+        int new_ch;
+        if (sscanf(command,
+                   "set air wfbng air_channel %d",
+                   &new_ch) == 1) {
+            snprintf(translated_cmd,
+                     sizeof(translated_cmd),
+                     "change_channel %d",
+                     new_ch);
+            if (verbose)
+                printf("[DEBUG] Translated '%s' → '%s'\n",
+                       command, translated_cmd);
+            command = translated_cmd;
+        }
+        else {
+            fprintf(stderr,
+                    "Invalid format for set air wfbng air_channel\n");
+            return 1;
+        }
+    }
+	
+	
+	
+	char response[BUF_SIZE];
 
     // Handle change_channel specially (with confirmation & rollback)
     if (strncmp(command, "change_channel", 14) == 0) {

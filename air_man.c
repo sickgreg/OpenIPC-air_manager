@@ -1,27 +1,3 @@
-/*
- * server.c - alink_manager: TCP server for drone
- *
- * Compile with:
- *     gcc -pthread -o alink_manager server.c
- *
- * This server listens on port 12355. On startup, it:
- *   - Reads configuration from /etc/wfb.yaml (or /etc/wfb.conf)
- *   - Detects wifi card(s) and SoC type
- *   - Automatically starts alink_drone (via start_alink command)
- *
- * It supports the following commands:
- *   start_alink                    - start alink_drone on the drone.
- *   stop_alink                     - stop alink_drone (killall alink_drone)
- *   restart_majestic               - restart majestic (killall -HUP majestic)
- *   change_channel <channel>       - change channel; waits for confirmation via "confirm_channel_change"
- *   confirm_channel_change         - confirms pending channel change
- *   set_video_mode <size> <fps> <exposure> '<crop>'
- *                                 - atomically set video parameters
- *   restart_wfb                    - restart wifibroadcast and request idr.
- *   restart_msposd                 - restart the msposd process using wifibroadcast
- *
- * Use the --verbose flag on the command line to output detailed debug messages.
- */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,6 +14,9 @@
 #define PORT 12355
 #define BUF_SIZE 1024
 #define CONFIRM_TIMEOUT 5 // seconds
+#define DEFAULT_SCRIPT_PATH "/usr/bin/air_man_cmd.sh"
+static char *script = DEFAULT_SCRIPT_PATH;
+
 
 // Global verbose flag
 int verbose = 0;
@@ -323,8 +302,27 @@ void process_command(const char *cmd, char *response, size_t resp_size) {
         int ret = system("wifibroadcast restart_msposd");
         snprintf(response, resp_size, ret == 0 ? "msposd restarted." : "Error restarting msposd.");
     }
+    // FALLBACK: unrecognized commands go to the local menu script
     else {
-        snprintf(response, resp_size, "Unknown command.");
+        char script_cmd[BUF_SIZE + 64];
+        snprintf(script_cmd, sizeof(script_cmd),
+                 "%s %s", script, command);
+
+        FILE *pipe = popen(script_cmd, "r");
+        if (pipe) {
+            char outbuf[BUF_SIZE];
+            if (fgets(outbuf, sizeof(outbuf), pipe)) {
+                outbuf[strcspn(outbuf, "\r\n")] = '\0';
+                strncpy(response, outbuf, resp_size - 1);
+                response[resp_size - 1] = '\0';
+            } else {
+                response[0] = '\0';  // no output
+            }
+            pclose(pipe);
+        } else {
+            snprintf(response, resp_size,
+                     "Error executing air_man script.");
+        }
     }
 }
 
@@ -348,12 +346,21 @@ void *client_handler(void *arg) {
 
 int main(int argc, char *argv[]) {
     int opt;
-    while ((opt = getopt(argc, argv, "v-:")) != -1) {
-        if (opt == 'v')
+    while ((opt = getopt(argc, argv, "vs:-:")) != -1) {
+        if (opt == 'v') {
             verbose = 1;
+        }
+        else if (opt == 's') {
+            // short‐opt override
+            script = optarg;
+        }
         else if (opt == '-') {
-            if (strcmp(optarg, "verbose") == 0)
+            if (strcmp(optarg, "verbose") == 0) {
                 verbose = 1;
+            }
+            else if (strncmp(optarg, "script=", 7) == 0) {
+                script = optarg + 7;
+            }
         }
     }
 
