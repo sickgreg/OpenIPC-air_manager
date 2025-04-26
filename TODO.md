@@ -16,7 +16,7 @@ info command needs to do something
   tx power, wifi channel, ... and some more
 
 need alink to be a service
-  then mod the way we restart it -- Added a suggestion, check /etc/init.d/ and wfb.yaml - need to add actual commands for strt and stop //Joakim
+  then mod the way we restart it -- Added a suggestion, check /etc/init.d/ and wfb.yaml - added air_man but not alink related commands //Joakim
 
 need to use SO_REUSE port/IP
 root@openipc-ssc338q:/usr/bin# air_man
