@@ -11,6 +11,7 @@ case "$1" in
             alink)
                 echo "alink mode: greg-alink"
                 # Put the commands you need for starting 'alink' here
+                air_man &
                 ;;
             ""|disabled|*)
                 # If empty, explicitly "disabled", or unrecognized value
@@ -26,8 +27,8 @@ case "$1" in
         # Stop whichever mode was started
         case "$alink" in
             alink)
-                echo "Stopping greg-alink..."
-                
+                echo "Stopping alink..."
+                killall -q air_man
                 ;;
             ""|disabled|*)
                 echo "alink mode is 'disabled' (or unrecognized), nothing to stop."
