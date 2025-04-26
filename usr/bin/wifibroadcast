@@ -50,6 +50,8 @@ load_modules() {
 	fi
 
 	modprobe "$driver" "$opt1" "$opt2"
+	#Old settings with full tx power
+	#modprobe "$driver" rtw_regd_src=1 rtw_tx_pwr_by_rate=0 rtw_tx_pwr_lmt_enable=0
 	sleep 3
 
 	if ! ifconfig "$wfb_dev" up; then
