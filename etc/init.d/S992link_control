@@ -4,7 +4,7 @@ case "$1" in
     start)
         
         # Read alink mode from YAML
-        alink="$(yaml-cli -i /etc/wfb.yaml -g .wireless.alink)"
+        alink="$(yaml-cli -i /etc/wfb.yaml -g .wireless.link_control)"
 
         # If empty or unknown, treat as disabled
         case "$alink" in
