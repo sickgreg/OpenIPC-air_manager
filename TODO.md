@@ -21,3 +21,5 @@ need alink to be a service
 need to use SO_REUSE port/IP
 root@openipc-ssc338q:/usr/bin# air_man
 bind failed: Address already in use
+
+don't allow issuing multiple commands at once
