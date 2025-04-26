@@ -46,15 +46,21 @@ set_tx_power() {
         exit 1
     fi
 
-    MCS_INDEX=$(get_mcs_index)
-    if [ -z "$MCS_INDEX" ]; then
-        echo "Error: Could not detect MCS index."
-        exit 1
+    # If --mcs provided, use it for selecting tx_power list
+    if [ -n "$MCS_OVERRIDE" ]; then
+        if ! is_valid_mcs "$MCS_OVERRIDE"; then
+            echo "Error: Invalid MCS value '$MCS_OVERRIDE'. Must be 0-7."
+            exit 1
+        fi
+        TARGET_MCS="$MCS_OVERRIDE"
+    else
+        # Otherwise, use current MCS
+        TARGET_MCS=$(get_mcs_index)
     fi
 
-    TX_LIST=$(get_tx_power_list "$ADAPTER" "$MCS_INDEX")
+    TX_LIST=$(get_tx_power_list "$ADAPTER" "$TARGET_MCS")
     if [ -z "$TX_LIST" ]; then
-        echo "Error: Could not find TX power list for adapter $ADAPTER MCS$MCS_INDEX."
+        echo "Error: Could not find TX power list for adapter $ADAPTER MCS$TARGET_MCS."
         exit 1
     fi
 
@@ -88,11 +94,6 @@ set_tx_power() {
 
     # Handle optional MCS override
     if [ -n "$MCS_OVERRIDE" ]; then
-        if ! is_valid_mcs "$MCS_OVERRIDE"; then
-            echo "Error: Invalid MCS value '$MCS_OVERRIDE'. Must be 0-7."
-            exit 1
-        fi
-
         echo "Changing MCS index to $MCS_OVERRIDE..."
 
         # Read current settings
