@@ -6,7 +6,7 @@ updated wifibroadcast script
 remove wfb.conf related stuff
   File /etc/wfb.conf does not exist.
 
-need to use #!/bin/sh instead of bash in man_cmd.sh 
+DONE need to use #!/bin/sh instead of bash in man_cmd.sh 
 
 fix if not running alink already, you will be after setting resolution!
   see if it's running / enabled to run.  Better check if enabled really
@@ -15,8 +15,12 @@ fix if not running alink already, you will be after setting resolution!
 info command needs to do something
   tx power, wifi channel, ... and some more
 
-need alink to be a service
-  then mod the way we restart it -- Added a suggestion, check /etc/init.d/ and wfb.yaml - added air_man but not alink related commands //Joakim
+DONE need alink to be a service, starts if yaml link_manager is "alink" 
+
+air_man should start/stop alink with alink service now (i think?)
+
+DONE need air_man to be a service
+  
 
 need to use SO_REUSE port/IP
 root@openipc-ssc338q:/usr/bin# air_man
