@@ -1,18 +1,14 @@
 #!/bin/sh
 
 case "$1" in
-    start)
-
-        air_man &>/dev/null &
-
-        ;;
-    stop)
-        killall -q air_man
-        esac
-        ;;
-
-    *)
-        echo "Usage: $0 {start|stop}"
-        exit 1
-        ;;
+  start)
+    air_man >/dev/null 2>&1 &   # launch in background, silence stdout/stderr
+    ;;
+  stop)
+    killall -q air_man          # quietly kill any running air_man
+    ;;
+  *)
+    echo "Usage: $0 {start|stop}"
+    exit 1
+    ;;
 esac
