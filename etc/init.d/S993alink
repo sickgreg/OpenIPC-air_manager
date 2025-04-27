@@ -22,7 +22,7 @@ case "$1" in
 
     stop)
         # Read alink mode again
-        alink="$(yaml-cli -i /etc/wfb.yaml -g .wireless.alink)"
+        alink="$(yaml-cli -i /etc/wfb.yaml -g .wireless.link_control)"
 
         # Stop whichever mode was started
         case "$alink" in
