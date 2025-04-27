@@ -49,9 +49,9 @@ load_modules() {
 		opt2="rtw_tx_pwr_lmt_enable=2"
 	fi
 
-	modprobe "$driver" "$opt1" "$opt2"
+	#modprobe "$driver" "$opt1" "$opt2"
 	#Old settings with full tx power
-	#modprobe "$driver" rtw_regd_src=1 rtw_tx_pwr_by_rate=0 rtw_tx_pwr_lmt_enable=0
+	modprobe "$driver" rtw_regd_src=1 rtw_tx_pwr_by_rate=0 rtw_tx_pwr_lmt_enable=0
 	sleep 3
 
 	if ! ifconfig "$wfb_dev" up; then
@@ -165,6 +165,8 @@ stop() {
 # ---------- targeted restart helper ----------
 restart() {
 	target=$1
+	wfb_yaml                                      
+        load_config
 	case "$target" in
 		osd|telemetry|"")           # default to telemetry/osd
 			echo_log "Restarting telemetry (msposd/mavfwd)"
