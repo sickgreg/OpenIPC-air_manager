@@ -23,3 +23,9 @@ root@openipc-ssc338q:/usr/bin# air_man
 bind failed: Address already in use
 
 don't allow issuing multiple commands at once
+
+
+
+ALINK fixes (for joakims scripts)
+set tx_factor option to 1 (maybe an option in config to keep compatibility?)
+and replace all "cli —get" with "cli -g"
