@@ -11,7 +11,7 @@ case "$1" in
             alink)
                 echo "Control mode: alink"
                 # Put the commands you need for starting 'alink' here
-                alink &>/dev/null &
+                alink_drone &>/dev/null &
                 ;;
             ""|disabled|*)
                 # If empty, explicitly "disabled", or unrecognized value
@@ -28,7 +28,7 @@ case "$1" in
         case "$alink" in
             alink)
                 echo "Stopping alink..."
-                killall -q alink
+                killall -q alink_drone
                 ;;
             ""|disabled|*)
                 echo "alink mode is 'disabled' (or unrecognized), nothing to stop."
