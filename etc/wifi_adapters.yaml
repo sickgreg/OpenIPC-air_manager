@@ -71,7 +71,7 @@ profiles:
       1: [25mW, 25mW, 25mW, 25mW, 25mW, 16mW, 13mW, 8mW]
       2: [80mW, 66mW, 58mW, 25mW, 25mW, 16mW, 13mW, 8mW]
       3: [158mW, 148mW, 79mW, 25mW, 25mW, 16mW, 13mW, 8mW]
-	    4: [213mW, 200mW, 79mW, 25mW, 25mW, 16mW, 13mW, 8mW]
+      4: [213mW, 200mW, 79mW, 25mW, 25mW, 16mW, 13mW, 8mW]
   default:
     bw: [20]
     stbc: [0]
