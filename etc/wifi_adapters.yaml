@@ -1,4 +1,4 @@
-all_profiles: [bl-r8812af1,bl-m8812eu2,bl-m8731bu4,bl-m8812eu2-alink,default]
+all_profiles: [bl-r8812af1,bl-m8812eu2,bl-m8731bu4,default]
 profiles:
   bl-r8812af1:
     bw: [5,10,20,40]
