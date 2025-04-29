@@ -59,9 +59,3 @@ selected_command="${mode_commands[$index]}"
 
 echo "Executing: ./air_man_gs $camera_ip \"$selected_command\""
 ./air_man_gs "$camera_ip" "$selected_command"
-echo "Executing: ./air_man_gs $camera_ip restart_msposd"
-./air_man_gs "$camera_ip" restart_msposd
-echo "Executing: ./air_man_gs $camera_ip stop_alink"
-./air_man_gs "$camera_ip" stop_alink
-echo "Executing: ./air_man_gs $camera_ip start_alink"
-./air_man_gs "$camera_ip" start_alink
