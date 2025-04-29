@@ -1,12 +1,12 @@
 /*
- * air_man_gs.c - Command-line client for controlling alink_manager
+ * client.c - Command-line client for controlling alink_manager
  *
  * Compile with:
- *     gcc -o air_man_gs air_man_gs.c
+ *     gcc -o client client.c
  *
  * Usage:
- *   air_man_gs [--verbose] <server_ip> "<command>"
- *   air_man_gs --help
+ *   client [--verbose] <server_ip> "<command>"
+ *   client --help
  *
  * Options:
  *   -v, --verbose   Enable debug output
@@ -105,23 +105,24 @@ void print_help(const char *prog) {
     );
 }
 
-
 #define CONNECT_TIMEOUT   2   // seconds to wait per connect()
 #define MAX_CONNECT_TRIES 3   // how many times to retry
 
 // Attempts a non-blocking connect with a timeout.
 // Returns 0 on success, -1 on failure (errno set appropriately).
-static int connect_with_timeout(int sock, 
-                                const struct sockaddr_in *addr, 
-                                socklen_t addrlen, 
+static int connect_with_timeout(int sock,
+                                const struct sockaddr_in *addr,
+                                socklen_t addrlen,
                                 int timeout_secs)
 {
     int flags, res, err;
     socklen_t errlen;
 
     // 1) make socket non-blocking
-    if ((flags = fcntl(sock, F_GETFL, 0)) < 0) return -1;
-    if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0) return -1;
+    if ((flags = fcntl(sock, F_GETFL, 0)) < 0)
+        return -1;
+    if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0)
+        return -1;
 
     // 2) start connect()
     res = connect(sock, (const struct sockaddr*)addr, addrlen);
@@ -139,9 +140,8 @@ static int connect_with_timeout(int sock,
         }
         // 4) check actual connect() result
         err = 0; errlen = sizeof(err);
-        if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &errlen) < 0) {
+        if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &errlen) < 0)
             goto fail;
-        }
         if (err) {
             errno = err;
             goto fail;
@@ -153,7 +153,8 @@ static int connect_with_timeout(int sock,
     }
 
     // 5) restore flags
-    if (fcntl(sock, F_SETFL, flags) < 0) return -1;
+    if (fcntl(sock, F_SETFL, flags) < 0)
+        return -1;
     return 0;
 
 fail:
@@ -181,7 +182,8 @@ int send_command_get_response(const char *server_ip,
     }
 
     for (attempt = 1; attempt <= MAX_CONNECT_TRIES; ++attempt) {
-        if (verbose) printf("[DEBUG] Creating socket (try %d)...\n", attempt);
+        if (verbose)
+            printf("[DEBUG] Creating socket (try %d)...\n", attempt);
         if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
             perror("Socket creation error");
             return -1;
@@ -192,8 +194,9 @@ int send_command_get_response(const char *server_ip,
         tv.tv_usec = 0;
         setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
-        if (verbose) printf("[DEBUG] Connecting to %s:%d (try %d)...\n",
-                            server_ip, PORT, attempt);
+        if (verbose)
+            printf("[DEBUG] Connecting to %s:%d (try %d)...\n",
+                   server_ip, PORT, attempt);
 
         if (connect_with_timeout(sock, &server_addr, sizeof(server_addr),
                                  CONNECT_TIMEOUT) == 0) {
@@ -210,12 +213,13 @@ int send_command_get_response(const char *server_ip,
             return -1;
         }
 
-        // small back‑off before retrying
+        // small back-off before retrying
         sleep(1);
     }
 
     // At this point `sock` is connected.
-    if (verbose) printf("[DEBUG] Sending command: %s\n", command);
+    if (verbose)
+        printf("[DEBUG] Sending command: %s\n", command);
     if (send(sock, command, strlen(command), 0) < 0) {
         perror("Send failed");
         close(sock);
@@ -228,17 +232,18 @@ int send_command_get_response(const char *server_ip,
     } else {
         snprintf(response, resp_size, "No immediate rejection.  Moving on...");
     }
-    if (verbose) printf("[DEBUG] Received: %s\n", response);
+    if (verbose)
+        printf("[DEBUG] Received: %s\n", response);
     close(sock);
     return 0;
 }
-
 
 // Read NIC list from /etc/default/wifibroadcast
 char **get_nics(int *count) {
     FILE *fp = fopen("/etc/default/wifibroadcast", "r");
     if (!fp) {
-        if (verbose) printf("[DEBUG] Cannot open /etc/default/wifibroadcast\n");
+        if (verbose)
+            printf("[DEBUG] Cannot open /etc/default/wifibroadcast\n");
         *count = 0;
         return NULL;
     }
@@ -251,14 +256,16 @@ char **get_nics(int *count) {
         }
     }
     fclose(fp);
-    if (verbose) printf("[DEBUG] Raw NICs line: %s\n", nics_line);
+    if (verbose)
+        printf("[DEBUG] Raw NICs line: %s\n", nics_line);
     // Strip outer quotes
     int len = strlen(nics_line);
     if (len >= 2 && nics_line[0]=='"' && nics_line[len-1]=='"') {
         memmove(nics_line, nics_line+1, len-2);
         nics_line[len-2] = '\0';
     }
-    if (verbose) printf("[DEBUG] Processed NICs line: %s\n", nics_line);
+    if (verbose)
+        printf("[DEBUG] Processed NICs line: %s\n", nics_line);
 
     char *copy = strdup(nics_line), *tok = strtok(copy, " ");
     int alloc = 4, idx = 0;
@@ -269,7 +276,8 @@ char **get_nics(int *count) {
             arr = realloc(arr, alloc * sizeof(char*));
         }
         arr[idx++] = strdup(tok);
-        if (verbose) printf("[DEBUG] Found NIC: %s\n", tok);
+        if (verbose)
+            printf("[DEBUG] Found NIC: %s\n", tok);
         tok = strtok(NULL, " ");
     }
     free(copy);
@@ -282,13 +290,15 @@ void local_change_channel(int channel) {
     int cnt = 0;
     char **nics = get_nics(&cnt);
     if (!nics || cnt == 0) {
-        if (verbose) printf("[DEBUG] No NICs to change\n");
+        if (verbose)
+            printf("[DEBUG] No NICs to change\n");
         return;
     }
     for (int i = 0; i < cnt; i++) {
         char cmd[128];
         snprintf(cmd, sizeof(cmd), "iw dev %s set channel %d", nics[i], channel);
-        if (verbose) printf("[DEBUG] %s\n", cmd);
+        if (verbose)
+            printf("[DEBUG] %s\n", cmd);
         system(cmd);
         free(nics[i]);
     }
@@ -308,7 +318,8 @@ int update_file(const char *filepath, const char *key, const char *format, int c
     snprintf(tmp_filepath, sizeof(tmp_filepath), "%s.tmp", filepath);
     FILE *fp_tmp = fopen(tmp_filepath, "w");
     if (!fp_tmp) {
-        fprintf(stderr, "Cannot open temporary file: %s for file %s\n", tmp_filepath, filepath);
+        fprintf(stderr, "Cannot open temporary file: %s for file %s\n",
+                tmp_filepath, filepath);
         fclose(fp);
         return 0;
     }
@@ -339,19 +350,16 @@ int update_file(const char *filepath, const char *key, const char *format, int c
 void save_new_channel_to_files(int channel) {
     const char *file1 = "/etc/wifibroadcast.cfg";
     const char *file2 = "/config/gs.conf";
-    int success1, success2;
+    int success1 = 0, success2 = 0;
 
     // Update file1 unconditionally
     success1 = update_file(file1, "wifi_channel", "wifi_channel = '%d'", channel);
     
     // Update file2 only if it exists.
     if (access(file2, F_OK) == 0) {
-        success2 = update_file(file2, "wifi_channel", "wifi_channel = '%d'", channel);
-    } else {
-        fprintf(stderr, "File %s does not exist, skipping update.\n", file2);
-        success2 = 0;
+        success2 = update_file(file2, "wfb_channel", "wfb_channel = '%d'", channel);
     }
-    
+
     // Report final status
     if (!success1 && !success2) {
         fprintf(stderr, "Warning: Could not write to either file.  Channel change will not persist after reboot!\n");
@@ -364,15 +372,21 @@ void save_new_channel_to_files(int channel) {
 
 int main(int argc, char *argv[]) {
     static struct option opts[] = {
-        {"verbose", no_argument, 0, 'v'},
-        {"help",    no_argument, 0, 'h'},
+        {"verbose", no_argument,       0, 'v'},
+        {"help",    no_argument,       0, 'h'},
         {0, 0, 0, 0}
     };
     int opt;
     while ((opt = getopt_long(argc, argv, "vh", opts, NULL)) != -1) {
-        if (opt == 'v') verbose = 1;
-        else if (opt == 'h') { print_help(argv[0]); return 0; }
-        else { print_help(argv[0]); return 1; }
+        if (opt == 'v')
+            verbose = 1;
+        else if (opt == 'h') {
+            print_help(argv[0]);
+            return 0;
+        } else {
+            print_help(argv[0]);
+            return 1;
+        }
     }
     if (optind + 2 > argc) {
         print_help(argv[0]);
@@ -381,8 +395,8 @@ int main(int argc, char *argv[]) {
 
     const char *server_ip = argv[optind];
     const char *command   = argv[optind+1];
-    
-	//――――――――――――――――――――――――――――――
+
+    //――――――――――――――――――――――――――――――
     // Client-side intercept: map
     //   "set air wfbng air_channel N"
     // to
@@ -403,24 +417,21 @@ int main(int argc, char *argv[]) {
                 printf("[DEBUG] Translated '%s' → '%s'\n",
                        command, translated_cmd);
             command = translated_cmd;
-        }
-        else {
+        } else {
             fprintf(stderr,
                     "Invalid format for set air wfbng air_channel\n");
             return 1;
         }
     }
-	
-	
-	
-	char response[BUF_SIZE];
+
+    char response[BUF_SIZE];
 
     // Handle change_channel specially (with confirmation & rollback)
     if (strncmp(command, "change_channel", 14) == 0) {
         int ch;
         if (sscanf(command, "change_channel %d", &ch) == 1) {
             // get original channel
-            int cnt; 
+            int cnt;
             char **nics = get_nics(&cnt);
             char orig[16] = "unknown";
             if (cnt > 0) {
@@ -433,22 +444,41 @@ int main(int argc, char *argv[]) {
                     orig[strcspn(orig, "\r\n")] = 0;
                 if (p) pclose(p);
             }
-            if (nics) { for (int i = 0; i < cnt; i++) free(nics[i]); free(nics); }
+            if (nics) {
+                for (int i = 0; i < cnt; i++)
+                    free(nics[i]);
+                free(nics);
+            }
 
             // send change
-            send_command_get_response(server_ip, command, response, sizeof(response));
+            int rc = send_command_get_response(server_ip,
+                                              command,
+                                              response,
+                                              sizeof(response));
+            /* If the TCP send/read failed entirely or we got no data, bail out */
+            if (rc != 0 || response[0] == '\0') {
+                fprintf(stderr, "No response from VTX\n");
+                return 1;
+            }
             printf("%s\n", response);
-            sleep(1);
+            sleep(2);
 
             if (!strstr(response, "Failed")) {
-                local_change_channel(ch);
-                // ping test
+                 local_change_channel(ch);
+                 
+                 // ping test @ ~10 Hz
                 int ok = 0;
-                for (int i = 0; i < 5; i++) {
-                    char ping[64];
-                    snprintf(ping, sizeof(ping), "ping -c1 -W1 %s >/dev/null", server_ip);
-                    if (!system(ping)) { ok = 1; break; }
-                    sleep(1);
+                for (int i = 0; i < 10; i++) {
+                    char ping_cmd[80];
+                    // -c1: one packet, -W1: wait up to 1 s for reply,
+                    // -i0.2: send interval 200 ms (so on failure you timeout faster)
+                    snprintf(ping_cmd, sizeof(ping_cmd),
+                             "ping -c1 -W1 -i0.2 %s >/dev/null", server_ip);
+                    if (system(ping_cmd) == 0) {
+                        ok = 1;
+                        break;
+                    }
+                    usleep(100000);  // 100 ms pause → ~10 Hz
                 }
                 if (ok) {
                     send_command_get_response(server_ip, "confirm_channel_change", response, sizeof(response));
@@ -484,7 +514,7 @@ int main(int argc, char *argv[]) {
         if (send_command_get_response(server_ip, command, response, sizeof(response)) == 0)
             printf("%s\n", response);
     }
-    // All remaining commands (start_alink, stop_alink, restart_majestic, adjust_txprofiles, adjust_alink, info, etc.)
+    // All remaining commands
     else {
         if (send_command_get_response(server_ip, command, response, sizeof(response)) == 0)
             printf("%s\n", response);
