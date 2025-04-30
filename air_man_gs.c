@@ -498,16 +498,58 @@ int main(int argc, char *argv[]) {
     else if (strncmp(command, "set_video_mode", 14) == 0) {
         char size[32], crop[128];
         int fps, exposure;
+
         // Expected format: set_video_mode <size> <fps> <exposure> '<crop>'
-        if (sscanf(command, "set_video_mode %31s %d %d '%127[^']'", size, &fps, &exposure, crop) == 4) {
-            // send it straight to server
+        if (sscanf(command,
+                   "set_video_mode %31s %d %d '%127[^']'",
+                   size, &fps, &exposure, crop) == 4) {
+            // 1) send to server
             if (send_command_get_response(server_ip, command, response, sizeof(response)) == 0) {
                 printf("%s\n", response);
+
+                // 2) only update if fps changed
+                int current = -1;
+                {
+                    FILE *pf = popen("sed -n 's/^\\s*fps *= *\\([0-9]\\+\\).*/\\1/p' /config/scripts/rec-fps", "r");
+                    if (pf) {
+                        fscanf(pf, "%d", &current);
+                        pclose(pf);
+                    }
+                }
+                if (current != fps) {
+                    // update fps value
+                    char cmd[256];
+                    snprintf(cmd, sizeof(cmd),
+                             "sed -i 's/^\\(fps *= *\\)[0-9]\\+/\\1%d/' /config/scripts/rec-fps", fps);
+                    if (system(cmd) != 0) {
+                        fprintf(stderr, "Could not update /config/scripts/rec-fps\n");
+                    }
+
+                    // 3) restart local services quietly, report successes
+                    int ret1 = system("sudo systemctl restart openipc --quiet >/dev/null 2>&1");
+                    int ret2 = system("sudo systemctl restart stream --quiet >/dev/null 2>&1");
+                    if (ret1 == 0 && ret2 == 0) {
+                        printf("Successfully updated VRX rec-fps by restarting openipc and stream services\n");
+                    } else if (ret1 == 0) {
+                        printf("Successfully updated VRX rec-fps by restarting openipc service\n");
+                    } else if (ret2 == 0) {
+                        printf("Successfully updated VRX rec-fps by restarting stream service\n");
+                    } else {
+                        fprintf(stderr, "Failed to update VRX rec-fps\n");
+                    }
+                } else {
+                    printf("FPS unchanged (%d); no VRX service(s) restarted\n", fps);
+                }
+            } else {
+                fprintf(stderr, "Failed to get response from VTX\n");
             }
         } else {
             fprintf(stderr, "Invalid set_video_mode format\n");
         }
     }
+
+
+
     // Handle new msposd commands
     else if (strncmp(command, "stop_msposd", 11) == 0 ||
              strncmp(command, "start_msposd", 12) == 0) {
