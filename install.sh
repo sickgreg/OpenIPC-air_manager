@@ -11,8 +11,8 @@ IP="${1:-10.5.0.10}"
 ssh-keygen -f '/home/radxa/.ssh/known_hosts' -R "$IP"
 
 echo "chmod +x on relevant files ..."
-chmod -R +x vtx/usr/bin/*
-chmod -R +x vrx/usr/bin/*
+chmod -R +x vtx/usr/local/bin/*
+chmod -R +x vrx/usr/local/bin/*
 chmod +x air_man_cmd.sh
 chmod +x video_mode_chooser.sh
 chmod +x usr/local/bin/*
