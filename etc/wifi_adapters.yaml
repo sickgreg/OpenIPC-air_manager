@@ -37,11 +37,11 @@ profiles:
       mcs6: [50,200,1500,1500,1900]
       mcs7: [50,200,1250,1250,1900]
     pwr_mw:
-      0: [1mW,1mW,1mW,1mW,1mW,1mW,1mW]
-      1: [25mW,25mW,25mW,25mW,25mW,25mW,25mW]
-      2: [400mW,400mW,400mW,400mW,400mW,400mW,350mW]
-      3: [600mW,600mW,600mW,500mW,400mW,400mW,350mW]
-      4: [800mW,700mW,700mW,550mW,425mW,425mW,3750mW]
+      0: [1mW,1mW,1mW,1mW,1mW,1mW,1mW,1mW]
+      1: [25mW, 25mW,25mW,25mW,25mW,25mW,25mW,25mW]
+      2: [400mW,400mW,400mW,400mW,400mW,400mW,400mW,350mW]
+      3: [600mW,600mW,600mW,600mW,500mW,400mW,400mW,350mW]
+      4: [800mW,800mW,700mW,700mW,550mW,425mW,425mW,375mW]
   bl-m8731bu4:
     description: "Tested with real instruments and mapped."
     bw: [5,10,20,40]
