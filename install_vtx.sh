@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# Ensure the script is run with root privileges
+if [ "$(id -u)" -ne 0 ]; then
+    echo "This script requires root privileges. Please run with sudo."
+    exit 1
+fi
+
 # Use the first argument as IP if supplied, otherwise default to 10.5.0.10
 IP="${1:-10.5.0.10}"
 ssh-keygen -f '/home/radxa/.ssh/known_hosts' -R "$IP"
