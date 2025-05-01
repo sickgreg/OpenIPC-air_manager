@@ -147,6 +147,11 @@ video_settings() {
 	cli -s .outgoing.wfb true
 	cli -s .fpv.enabled true
 	cli -s .fpv.noiseLevel 1
+        if [ "$sensor" = "imx335" ]; then
+    	    cli -s .video0.size 1280x960
+        else
+	    cli -s .video0.size 1280x720
+        fi
 }
 
 start() {
