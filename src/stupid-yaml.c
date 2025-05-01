@@ -594,9 +594,9 @@ int main(int argc, char *argv[]) {
                 node->value = strdup(set_value);
                 node->type = YAML_NODE_SCALAR;
             }
-            printf("Value set at '%s'.\n", set_path);
+            #printf("Value set at '%s'.\n", set_path);
             save_yaml(filename, root);
-            printf("Changes saved to file '%s'.\n", filename);
+            #printf("Changes saved to file '%s'.\n", filename);
         } else {
             printf("Could not set value at '%s'.\n", set_path);
         }
