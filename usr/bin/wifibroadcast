@@ -119,6 +119,20 @@ start_telemetry() {
 		msposd -b 115200 -c 8 -r "$osd_fps" -m /dev/"$serial" \
 			-o 127.0.0.1:"$port_tx" -z "$size" > /dev/null &
 	fi
+
+	# --- always start air_man along with telemetry ---
+	echo_log "Starting air_man"
+	air_man &> /dev/null &
+}
+
+# ---------- A-Link drone (ground-station) helper ----------
+start_alink() {
+	if [ "$link_control" = "alink" ]; then
+		echo_log "Starting alink_drone (A-Link GS)"
+		alink_drone &> /dev/null &
+	else
+		echo_log "A-Link disabled (link_control=$link_control) – skipping alink_drone"
+	fi
 }
 
 video_settings() {
@@ -150,11 +164,12 @@ start() {
 	stop
 	start_broadcast
 	start_tunnel
-	start_telemetry
+	start_telemetry   # now launches air_man too
+	start_alink
 }
 
 stop() {
-	for process in wfb_rx wfb_tx wfb_tun msposd mavfwd; do
+	for process in wfb_rx wfb_tx wfb_tun msposd mavfwd air_man alink_drone; do
 		if [ -n "$(pidof $process)" ]; then
 			echo_log "Stopping $process"
 			killall -q "$process"
@@ -165,12 +180,12 @@ stop() {
 # ---------- targeted restart helper ----------
 restart() {
 	target=$1
-	wfb_yaml                                      
-        load_config
+	wfb_yaml
+	load_config
 	case "$target" in
 		osd|telemetry|"")           # default to telemetry/osd
-			echo_log "Restarting telemetry (msposd/mavfwd)"
-			killall -q msposd mavfwd 2>/dev/null
+			echo_log "Restarting telemetry (msposd/mavfwd/air_man)"
+			killall -q msposd mavfwd air_man 2>/dev/null
 			start_telemetry
 			;;
 		tunnel)
@@ -183,8 +198,13 @@ restart() {
 			killall -q wfb_tx 2>/dev/null
 			start_broadcast
 			;;
+		alink)
+			echo_log "Restarting A-Link (alink_drone)"
+			killall -q alink_drone 2>/dev/null
+			start_alink
+			;;
 		*)
-			echo "Usage: $0 restart {osd|tunnel|broadcast}"
+			echo "Usage: $0 restart {osd|tunnel|broadcast|alink}"
 			exit 1
 			;;
 	esac
