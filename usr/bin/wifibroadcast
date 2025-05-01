@@ -128,7 +128,7 @@ start_telemetry() {
 # ---------- A-Link drone (ground-station) helper ----------
 start_alink() {
 	if [ "$link_control" = "alink" ]; then
-		echo_log "Starting alink_drone (A-Link GS)"
+		echo_log "Starting alink_drone (A-Link Drone)"
 		alink_drone &> /dev/null &
 	else
 		echo_log "A-Link disabled (link_control=$link_control) – skipping alink_drone"
