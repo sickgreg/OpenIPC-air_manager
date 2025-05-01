@@ -3,7 +3,7 @@ wireless:
   channel: 161
   width: 20
   mlink: 1500
-  wifi_adapter: default
+  wlan_adapter: default
   link_control: alink
 broadcast:
   mcs_index: 2
