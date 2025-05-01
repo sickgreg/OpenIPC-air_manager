@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Use the first argument as IP if supplied, otherwise default to 192.168.1.10
+# Use the first argument as IP if supplied, otherwise default to 10.5.0.10
 IP="${1:-10.5.0.10}"
 ssh-keygen -f '/home/radxa/.ssh/known_hosts' -R "$IP"
 
