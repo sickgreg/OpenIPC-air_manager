@@ -15,6 +15,7 @@ chmod -R +x vtx/usr/bin/*
 chmod -R +x vrx/usr/bin/*
 chmod +x air_man_cmd.sh
 chmod +x video_mode_chooser.sh
+chmod +x usr/local/bin/*
 
 
 echo "Stopping running services..."
@@ -31,8 +32,8 @@ echo "Scp completed ... rebooting ... wait for reconnect..."
 SSHPASS="12345" sshpass -e ssh -o StrictHostKeyChecking=no -t root@"$IP" 'reboot' 2>&1 | grep -v debug1
 
 echo "Copying VRX files..."
-cp -f vrx/usr/bin/* /usr/bin/
-cp -f video_mode_chooser.sh /usr/bin/
+cp -f vrx/usr/local/bin/* /usr/local/bin/
+cp -f video_mode_chooser.sh /usr/local/bin/
 cp -f video_modes_imx* /etc/
 
 echo "Reconnecting in 25s..."
