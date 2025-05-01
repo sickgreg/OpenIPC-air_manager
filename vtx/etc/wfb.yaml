@@ -1,6 +1,6 @@
 wireless:
   txpower: 20
-  channel: 165
+  channel: 161
   width: 20
   mlink: 1500
   wlan_adapter: default
