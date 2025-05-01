@@ -1,6 +1,6 @@
 wireless:
   txpower: 20
-  channel: 161
+  channel: 165
   width: 20
   mlink: 1500
   wlan_adapter: default
@@ -10,8 +10,8 @@ broadcast:
   tun_index: 1
   fec_k: 8
   fec_n: 12
-  stbc: 1
-  ldpc: 1
+  stbc: 0
+  ldpc: 0
   link_id: 7669206
 telemetry:
   router: msposd
