@@ -1,11 +1,11 @@
 #!/bin/sh
 
 WFB_YAML="/etc/wfb.yaml"
-WIFI_ADAPTERS_YAML="/etc/wifi_adapters.yaml"
+WLAN_ADAPTERS_YAML="/etc/wlan_adapters.yaml"
 WLAN_DEV="wlan0"
 
-get_wifi_adapter() {
-    yaml-cli -i "$WFB_YAML" -g .wireless.wifi_adapter
+get_wlan_adapter() {
+    yaml-cli -i "$WFB_YAML" -g .wireless.wlan_adapter
 }
 
 get_mcs_index() {
@@ -17,11 +17,11 @@ get_radio_settings() {
 }
 
 get_tx_power_list() {
-    yaml-cli -i "$WIFI_ADAPTERS_YAML" -g ".profiles.$1.tx_power.mcs$2" | tr -d '[]'
+    yaml-cli -i "$WLAN_ADAPTERS_YAML" -g ".profiles.$1.tx_power.mcs$2" | tr -d '[]'
 }
 
 get_pwr_mw() {
-    yaml-cli -i "$WIFI_ADAPTERS_YAML" -g ".profiles.$1.pwr_mw.$2"
+    yaml-cli -i "$WLAN_ADAPTERS_YAML" -g ".profiles.$1.pwr_mw.$2"
 }
 
 is_valid_mcs() {
@@ -40,7 +40,7 @@ set_tx_power() {
         exit 1
     fi
 
-    ADAPTER=$(get_wifi_adapter)
+    ADAPTER=$(get_wlan_adapter)
     if [ -z "$ADAPTER" ]; then
         echo "Error: Could not detect WiFi adapter."
         exit 1
