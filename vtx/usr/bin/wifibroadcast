@@ -138,7 +138,7 @@ start_alink() {
 video_settings() {
 	sensor=$(ipcinfo -s)
 	cli -s .isp.sensorConfig /etc/sensors/"$sensor"_fpv.bin
-	cli -s .isp.exposure 5
+	cli -s .isp.exposure 16
 	cli -s .video0.fps 60
 	cli -s .video0.bitrate 8192
 	cli -s .video0.codec h265
@@ -148,9 +148,9 @@ video_settings() {
 	cli -s .fpv.enabled true
 	cli -s .fpv.noiseLevel 1
         if [ "$sensor" = "imx335" ]; then
-    	    cli -s .video0.size 1280x960
+    	    cli -s .video0.size 1440x1080
         else
-	    cli -s .video0.size 1280x720
+	    cli -s .video0.size 1920x1080
         fi
 }
 
