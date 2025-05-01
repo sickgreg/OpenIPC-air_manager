@@ -81,8 +81,34 @@ set_tx_power() {
         exit 1
     fi
 
-    # Get the mW value from YAML
-    PWR_MW=$(get_pwr_mw "$ADAPTER" "$INDEX")
+    # Get expected mW value for this power index and MCS
+    RAW_PWR_MW=$(get_pwr_mw "$ADAPTER" "$INDEX")
+    RAW_PWR_MW_CLEAN=$(echo "$RAW_PWR_MW" | tr -d '[]')
+
+    # Handle single scalar value (no commas)
+    case "$RAW_PWR_MW_CLEAN" in
+        *mW,*)
+            # It’s a list, pick the MCS-th element
+            MW_COUNTER=0
+            PWR_MW=""
+            for MWVAL in $(echo "$RAW_PWR_MW_CLEAN" | tr ',' ' ')
+            do
+                if [ "$MW_COUNTER" -eq "$TARGET_MCS" ]; then
+                    PWR_MW="$MWVAL"
+                    break
+                fi
+                MW_COUNTER=$((MW_COUNTER + 1))
+            done
+            ;;
+        *)
+            # It's a single value, use as-is
+            PWR_MW="$RAW_PWR_MW_CLEAN"
+            ;;
+    esac
+
+    if [ -z "$PWR_MW" ]; then
+        PWR_MW="[unknown mW]"
+    fi
 
     echo "Setting TX power to ${TX_POWER} (index $INDEX) - expected ${PWR_MW}"
     iw dev "$WLAN_DEV" set txpower fixed "$TX_POWER"
@@ -96,16 +122,13 @@ set_tx_power() {
     if [ -n "$MCS_OVERRIDE" ]; then
         echo "Changing MCS index to $MCS_OVERRIDE..."
 
-        # Read current settings
         RADIO_SETTINGS=$(get_radio_settings)
 
-        # Extract current parameters
         STBC=$(echo "$RADIO_SETTINGS" | grep "^stbc=" | cut -d '=' -f2)
         LDPC=$(echo "$RADIO_SETTINGS" | grep "^ldpc=" | cut -d '=' -f2)
         GI=$(echo "$RADIO_SETTINGS" | grep "^short_gi=" | cut -d '=' -f2)
         BW=$(echo "$RADIO_SETTINGS" | grep "^bandwidth=" | cut -d '=' -f2)
 
-        # Issue the set_radio command
         wfb_tx_cmd 8000 set_radio -B "$BW" -G "$GI" -S "$STBC" -L "$LDPC" -M "$MCS_OVERRIDE"
         if [ $? -ne 0 ]; then
             echo "Failed to set new MCS index!"
