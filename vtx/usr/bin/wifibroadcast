@@ -120,9 +120,14 @@ start_telemetry() {
 			-o 127.0.0.1:"$port_tx" -z "$size" > /dev/null &
 	fi
 
-	# --- always start air_man along with telemetry ---
+
+}
+
+start_air_man() {
+
 	echo_log "Starting air_man"
 	air_man &> /dev/null &
+
 }
 
 # ---------- A-Link drone (ground-station) helper ----------
@@ -167,9 +172,10 @@ start() {
 	fi
 
 	stop
+	start_air_man
 	start_broadcast
 	start_tunnel
-	start_telemetry   # now launches air_man too
+	start_telemetry
 	start_alink
 }
 
@@ -190,8 +196,12 @@ restart() {
 	case "$target" in
 		osd|telemetry|"")           # default to telemetry/osd
 			echo_log "Restarting telemetry (msposd/mavfwd/air_man)"
-			killall -q msposd mavfwd air_man 2>/dev/null
+			killall -q msposd mavfwd 2>/dev/null
 			start_telemetry
+			;;
+                air_man)
+                        killall -q air_man 2>/dev/null
+			start_air_man
 			;;
 		tunnel)
 			echo_log "Restarting tunnel (wfb_tun)"
