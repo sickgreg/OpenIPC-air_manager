@@ -57,5 +57,15 @@ fi
 index=$((selection - 1))
 selected_command="${mode_commands[$index]}"
 
-echo "Executing: ./air_man_gs $camera_ip \"$selected_command\""
-./air_man_gs "$camera_ip" "$selected_command"
+executable="air_man_gs"
+
+echo "Executing: $executable $camera_ip \"$selected_command\""
+
+if [ -x "/usr/local/bin/$executable" ]; then
+    /usr/local/bin/$executable "$camera_ip" "$selected_command"
+elif [ -x "./$executable" ]; then
+    ./$executable "$camera_ip" "$selected_command"
+else
+    echo "Executable '$executable' not found in /usr/local/bin or current directory."
+    exit 1
+fi
