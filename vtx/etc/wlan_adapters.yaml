@@ -1,4 +1,4 @@
-all_profiles: [bl-r8812af1,bl-m8812eu2,bl-m8731bu4,default]
+all_profiles: [bl-r8812af1,bl-m8812eu2,bl-m8731bu4,bl-m8731bu4-amp,default]
 profiles:
   bl-r8812af1:
     description: "Not tested with instruments yet."
@@ -42,7 +42,27 @@ profiles:
       2: [400mW,400mW,400mW,400mW,400mW,400mW,400mW,350mW]
       3: [600mW,600mW,600mW,600mW,500mW,400mW,400mW,350mW]
       4: [800mW,800mW,700mW,700mW,550mW,425mW,425mW,375mW]
-  bl-m8731bu4:
+  bl-m8731bu4-amp:
+    description: "External amplifier connected."
+    bw: [5,10,20,40]
+    stbc: [0]
+    ldpc_rx: [0]
+    ldpc_tx: [0,1]
+    tx_power:
+      mcs0: [50, 100, 500, 1000]
+      mcs1: [50, 100, 500, 1000]
+      mcs2: [50, 100, 500, 900]
+      mcs3: [50, 100, 500, 800]
+      mcs4: [50, 100, 500, 700]
+      mcs5: [50, 100, 500, 600]
+      mcs6: [50, 100, 500, 500]
+      mcs7: [50, 100, 500, 500]
+    pwr_mw:
+      0: [1mW, 1mW, 1mW, 1mW, 1mW, 1mW, 1mW, 1mW]
+      1: [25mW, 25mW, 25mW, 25mW, 25mW, 16mW, 13mW, 8mW]
+      2: [80mW, 66mW, 58mW, 25mW, 25mW, 16mW, 13mW, 8mW]
+      3: [158mW, 148mW, 79mW, 25mW, 25mW, 16mW, 13mW, 8mW]
+    bl-m8731bu4:
     description: "Tested with real instruments and mapped."
     bw: [5,10,20,40]
     stbc: [0]
