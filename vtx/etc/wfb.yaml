@@ -1,5 +1,5 @@
 wireless:
-  txpower: 20
+  txpower: 1
   channel: 161
   width: 20
   mlink: 1500
