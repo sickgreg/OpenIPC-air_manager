@@ -195,7 +195,7 @@ restart() {
 	load_config
 	case "$target" in
 		osd|telemetry|"")           # default to telemetry/osd
-			echo_log "Restarting telemetry (msposd/mavfwd/air_man)"
+			echo_log "Restarting telemetry (msposd/mavfwd)"
 			killall -q msposd mavfwd 2>/dev/null
 			start_telemetry
 			;;
