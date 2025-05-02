@@ -60,8 +60,8 @@ profiles:
     pwr_mw:
       0: [1mW, 1mW, 1mW, 1mW, 1mW, 1mW, 1mW, 1mW]
       1: [25mW, 25mW, 25mW, 25mW, 25mW, 16mW, 13mW, 8mW]
-      2: [80mW, 66mW, 58mW, 25mW, 25mW, 16mW, 13mW, 8mW]
-      3: [158mW, 148mW, 79mW, 25mW, 25mW, 16mW, 13mW, 8mW]
+      2: [500mW, 450mW, 425mW, 400mW, 400mW, 400mW, 375mW, 375mW]
+      3: [900mW, 900mW, 850mW, 600mW, 500mW, 400mW, 350mW, 350mW]
     bl-m8731bu4:
     description: "Tested with real instruments and mapped."
     bw: [5,10,20,40]
