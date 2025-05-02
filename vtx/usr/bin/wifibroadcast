@@ -219,7 +219,7 @@ restart() {
 			start_alink
 			;;
 		*)
-			echo "Usage: $0 restart {osd|tunnel|broadcast|alink}"
+			echo "Usage: $0 restart {osd|tunnel|broadcast|alink|air_man}"
 			exit 1
 			;;
 	esac
