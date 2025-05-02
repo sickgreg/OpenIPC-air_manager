@@ -200,6 +200,7 @@ restart() {
 			start_telemetry
 			;;
                 air_man)
+			echo_log "Restarting air_man (air_man)"
                         killall -q air_man 2>/dev/null
 			start_air_man
 			;;
