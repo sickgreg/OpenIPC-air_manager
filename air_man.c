@@ -34,12 +34,91 @@
 #include <arpa/inet.h>
 #include <time.h>
 #include <getopt.h>
+#include <sys/un.h> 
 
 #define PORT 12355
 #define BUF_SIZE 1024
 #define CONFIRM_TIMEOUT 15 // seconds
 #define DEFAULT_SCRIPT_PATH "/usr/bin/air_man_cmd.sh"
 static char *script = DEFAULT_SCRIPT_PATH;
+
+// ─── Shared protocol definitions ───
+// For comms with alink
+enum {
+    CMD_SET_POWER      = 1,
+    CMD_GET_STATUS     = 2,
+    // … add more as you need
+    CMD_STATUS_REPLY   = 0x8000    // OR’d into cmd for replies
+};
+
+struct __attribute__((packed)) alink_msg_hdr {
+    uint16_t cmd;   // one of CMD_*
+    uint16_t len;   // length of payload in bytes
+};
+
+// ────────────────────────────────────
+// Path to the AF_UNIX socket used by alink
+#define ALINK_CMD_SOCKET_PATH  "/tmp/alink_cmd.sock"
+
+// Path to your alink config file to update there
+#define ALINK_CONFIG_FILE      "/etc/alink.conf"
+
+// Sends a CMD_SET_POWER TLV to alink, returns 0 on OK, 1 on out-of-range, -1 on error
+static int airman_send_set_power(int new_level) {
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) return -1;
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path,
+            ALINK_CMD_SOCKET_PATH,
+            sizeof(addr.sun_path)-1);
+			
+    if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        close(fd);
+        return -1;
+    }
+
+    // build request
+    int32_t net_v = htonl(new_level);
+    struct alink_msg_hdr hdr = {
+        .cmd = htons(CMD_SET_POWER),
+        .len = htons(sizeof(net_v))
+    };
+    if (write(fd, &hdr, sizeof(hdr)) != sizeof(hdr) ||
+        write(fd, &net_v, sizeof(net_v)) != sizeof(net_v)) {
+        close(fd);
+        return -1;
+    }
+
+    // read reply
+    if (read(fd, &hdr, sizeof(hdr)) != sizeof(hdr)) { close(fd); return -1; }
+    hdr.cmd = ntohs(hdr.cmd);
+    hdr.len = ntohs(hdr.len);
+    if (hdr.cmd != (CMD_SET_POWER|CMD_STATUS_REPLY) || hdr.len != 4) {
+        close(fd);
+        return -1;
+    }
+    int32_t net_status;
+    if (read(fd, &net_status, 4) != 4) { close(fd); return -1; }
+    close(fd);
+
+    return ntohl(net_status);  // 0=OK, 1=out-of-range
+}
+
+// Updates the alink config file’s power_level_0_to_10 via sed.
+// Returns 0 on success, nonzero on failure.
+static int update_alink_config_power(int new_level) {
+    char cmd[256];
+    // assumes a line like "power_level_0_to_10=5"
+    snprintf(cmd, sizeof(cmd),
+      "sed -i 's/^power_level_0_to_10=[0-9]\\+/power_level_0_to_10=%d/' %s",
+      new_level, ALINK_CONFIG_FILE);
+    return system(cmd);
+}
+
+
 
 // Global verbose flag
 int verbose = 0;
@@ -315,6 +394,33 @@ void process_command(const char *cmd, char *response, size_t resp_size) {
                      "Invalid set_video_mode command. Format: set_video_mode <size> <fps> <exposure> '<crop>'");
         }
 
+	    } else if (strncmp(command, "set_alink_power", 15) == 0) {
+			int lvl;
+			if (sscanf(command, "set_alink_power %d", &lvl) == 1) {
+				char resp[BUF_SIZE];
+				int sock_status = airman_send_set_power(lvl);
+				int cfg_status  = update_alink_config_power(lvl);
+
+				if (sock_status == 0 && cfg_status == 0) {
+					snprintf(response, resp_size,
+							"alink power set to %d (socket OK, config updated).",
+							lvl);
+				} else {
+					char *part1 = (sock_status ==  0 ? "socket OK" :
+								sock_status ==  1 ? "socket: value out-of-range" :
+													"socket error");
+					char *part2 = (cfg_status  == 0 ? "config OK" :
+								"config update failed");
+					snprintf(response, resp_size,
+							"set_alink_power %d: %s; %s.",
+							lvl, part1, part2);
+				}
+			} else {
+				snprintf(response, resp_size,
+						"Invalid usage. Format: set_alink_power <0–10>");
+			}
+
+
     } else {
         char s[BUF_SIZE + 64];
         snprintf(s, sizeof(s), "%s %s", script, command);
@@ -330,7 +436,7 @@ void process_command(const char *cmd, char *response, size_t resp_size) {
             }
             pclose(pipe);
         } else {
-            snprintf(response, resp_size, "Error executing air_man script.");
+            snprintf(response, resp_size, "Error executing air_man_cmd.sh script.");
         }
     }
 }

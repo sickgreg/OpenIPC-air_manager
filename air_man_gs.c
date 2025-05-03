@@ -83,7 +83,9 @@ void print_help(const char *prog) {
         "      Change the drone's WiFi channel to <n>.\n"
         "      Requires ground-station confirmation.\n\n"
         "  confirm_channel_change\n"
-        "      Confirm a pending channel change.\n\n"
+        "      Confirm a pending channel change (sent automatically).\n\n"
+		"  set_alink_power <0–10>\n"
+		"      Set the drone’s alink TX power level (0–10).\n\n"
         "  set_video_mode <size> <fps> <exposure> <crop>\n"
         "      Atomically set video size, frame rate, exposure, and crop.\n"
         "      <crop> must be quoted if it contains spaces, e.g. \"100 200 300 400\".\n\n"
@@ -556,6 +558,22 @@ int main(int argc, char *argv[]) {
         if (send_command_get_response(server_ip, command, response, sizeof(response)) == 0)
             printf("%s\n", response);
     }
+	
+	
+	 // ──────────────────────────────────────────────────────────────────────
+	 
+    else if (strncmp(command, "set_alink_power", 15) == 0) {
+        
+        if (send_command_get_response(server_ip, command, response, sizeof(response)) == 0) {
+            printf("%s\n", response);
+        } else {
+            fprintf(stderr, "Error sending set_alink_power command\n");
+            return 1;
+        }
+    }
+    // ──────────────────────────────────────────────────────────────────────
+	
+	
     // All remaining commands
     else {
         if (send_command_get_response(server_ip, command, response, sizeof(response)) == 0)
