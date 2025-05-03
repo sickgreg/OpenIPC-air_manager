@@ -57,6 +57,7 @@
 #include <sys/time.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <ctype.h>
 
 #define PORT 12355
 #define BUF_SIZE 1024
@@ -307,41 +308,72 @@ void local_change_channel(int channel) {
     free(nics);
 }
 
-// Helper function that attempts to update a given file.
-// Returns 1 on success, 0 on failure.
-int update_file(const char *filepath, const char *key, const char *format, int channel) {
+// Helper: copy [s..e) into dest (must have room), null-terminate
+static void copy_range(char *dest, const char *s, const char *e) {
+    size_t n = e - s;
+    memcpy(dest, s, n);
+    dest[n] = '\0';
+}
+
+// Update given file. Returns 1 on success, 0 on failure.
+int update_file(const char *filepath, const char *key, int new_value) {
     FILE *fp = fopen(filepath, "r");
     if (!fp) {
         fprintf(stderr, "Cannot open file: %s\n", filepath);
         return 0;
     }
-    // Create a temporary file in the same directory
+
     char tmp_filepath[256];
     snprintf(tmp_filepath, sizeof(tmp_filepath), "%s.tmp", filepath);
     FILE *fp_tmp = fopen(tmp_filepath, "w");
     if (!fp_tmp) {
-        fprintf(stderr, "Cannot open temporary file: %s for file %s\n",
-                tmp_filepath, filepath);
+        fprintf(stderr, "Cannot open temporary file: %s\n", tmp_filepath);
         fclose(fp);
         return 0;
     }
-    
+
     char line[1024];
-    while (fgets(line, sizeof(line), fp) != NULL) {
-        if (strstr(line, key) != NULL) {
-            // Replace entire line with new channel value.
-            char newline[1024];
-            snprintf(newline, sizeof(newline), format, channel);
-            fprintf(fp_tmp, "%s\n", newline);
-        } else {
-            fputs(line, fp_tmp);
+    while (fgets(line, sizeof(line), fp)) {
+        char *keypos = strstr(line, key);
+        if (keypos) {
+            // locate '=' after the key
+            char *eq = strchr(keypos, '=');
+            if (eq) {
+                // find start of the old integer
+                char *p = eq + 1;
+                // skip whitespace
+                while (*p && isspace((unsigned char)*p)) p++;
+                // skip optional opening quote
+                int has_quote = 0;
+                if (*p == '"' || *p == '\'') {
+                    has_quote = *p;
+                    p++;
+                }
+                // now p points at first digit (hopefully)
+                char *num_start = p;
+                while (*p && isdigit((unsigned char)*p)) p++;
+                char *num_end = p;
+                // if there was a quote, skip the closing one
+                if (has_quote && *p == has_quote) p++;
+
+                // build new line
+                // part1 = everything up to num_start
+                char part1[1024], part3[1024];
+                copy_range(part1, line, num_start);
+                copy_range(part3, p, line + strlen(line)); 
+
+                // write: part1 + new_value + part3
+                fprintf(fp_tmp, "%s%d%s", part1, new_value, part3);
+                continue;
+            }
         }
+        // no match or malformed line → copy unchanged
+        fputs(line, fp_tmp);
     }
-    
+
     fclose(fp);
     fclose(fp_tmp);
-    
-    // Replace original file with the temporary file.
+
     if (rename(tmp_filepath, filepath) != 0) {
         perror("Error renaming temporary file");
         return 0;
@@ -349,28 +381,32 @@ int update_file(const char *filepath, const char *key, const char *format, int c
     return 1;
 }
 
+
 void save_new_channel_to_files(int channel) {
     const char *file1 = "/etc/wifibroadcast.cfg";
     const char *file2 = "/config/gs.conf";
     int success1 = 0, success2 = 0;
 
-    // Update file1 unconditionally
-    success1 = update_file(file1, "wifi_channel", "wifi_channel = '%d'", channel);
-    
-    // Update file2 only if it exists.
+    // Update file1 unconditionally (key is "wifi_channel")
+    success1 = update_file(file1, "wifi_channel", channel);
+
+    // Update file2 only if it exists (key is "wfb_channel")
     if (access(file2, F_OK) == 0) {
-        success2 = update_file(file2, "wfb_channel", "wfb_channel = '%d'", channel);
+        success2 = update_file(file2, "wfb_channel", channel);
     }
 
     // Report final status
     if (!success1 && !success2) {
-        fprintf(stderr, "Warning: Could not write to either file.  Channel change will not persist after reboot!\n");
-    } else if (success1) {
-        fprintf(stderr, "Succesfully wrote new channel to %s\n", file1);
-    } else if (success2) {
-        fprintf(stderr, "Succesfully wrote new channel to %s\n", file2);
+        fprintf(stderr,
+                "Warning: Could not write to either file.  Channel change will not persist after reboot!\n");
+    } else {
+        if (success1)
+            fprintf(stderr, "Successfully wrote new channel to %s\n", file1);
+        if (success2)
+            fprintf(stderr, "Successfully wrote new channel to %s\n", file2);
     }
 }
+
 
 int main(int argc, char *argv[]) {
     static struct option opts[] = {
