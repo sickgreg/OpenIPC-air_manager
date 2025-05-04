@@ -59,6 +59,7 @@
 #include <ctype.h>
 #include <signal.h>
 #include <unistd.h>
+#include <getopt.h>      /* added for getopt_long() */
 
 typedef enum {
     YAML_NODE_SCALAR,
@@ -495,8 +496,21 @@ int main(int argc, char *argv[]) {
     signal(SIGINT, handle_signal);
     char *filename = NULL, *get_path = NULL, *set_path = NULL, *set_value = NULL, *delete_path = NULL;
     int opt;
+
+    /* long-option table (new) */
+    static struct option long_options[] = {
+        { "set",    required_argument, 0, 's' },
+        { "SET",    required_argument, 0, 'S' },
+        { "get",    required_argument, 0, 'g' },
+        { "delete", required_argument, 0, 'd' },
+        { 0, 0, 0, 0 }
+    };
+
     int set_dash = 0; /* 0 = inline style (-s), 1 = dash notation (-S) */
-    while ((opt = getopt(argc, argv, "i:g:s:S:d:")) != -1) {
+    while ((opt = getopt_long(argc, argv,
+                              "i:g:s:S:d:",   /* short options (unchanged) */
+                              long_options,   /* long-option table */
+                              NULL)) != -1) {
         switch (opt) {
             case 'i':
                 filename = optarg;
