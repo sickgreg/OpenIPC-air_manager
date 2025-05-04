@@ -6,6 +6,7 @@ profiles:
     stbc: [0,1]
     ldpc_rx: [0,1]
     ldpc_tx: [0,1]
+    guard: [long,short]
     tx_power:
       mcs0: [-50,-300,-1400,-2250,-2500]
       mcs1: [-50,-300,-1400,-2250,-2500]
@@ -27,6 +28,7 @@ profiles:
     stbc: [0,1]
     ldpc_rx: [0,1]
     ldpc_tx: [0,1]
+    guard: [long,short]
     tx_power:
       mcs0: [50,200,1400,2500,2900]
       mcs1: [50,200,1400,2500,2750]
@@ -48,6 +50,7 @@ profiles:
     stbc: [0]
     ldpc_rx: [0]
     ldpc_tx: [0,1]
+    guard: [long,short]
     tx_power:
       mcs0: [50, 100, 500, 1000]
       mcs1: [50, 100, 500, 1000]
@@ -68,6 +71,7 @@ profiles:
     stbc: [0]
     ldpc_rx: [0]
     ldpc_tx: [0,1]
+    guard: [long,short]
     tx_power:
       mcs0: [50, 1300, 1800, 2250, 2500]
       mcs1: [50, 1400, 1800, 2250, 2500]
@@ -89,6 +93,7 @@ profiles:
     stbc: [0]
     ldpc_rx: [0]
     ldpc_tx: [0]
+    guard: [long]
     tx_power:
       mcs0: [50,50,50,50,50]
       mcs1: [50,50,50,50,50]
