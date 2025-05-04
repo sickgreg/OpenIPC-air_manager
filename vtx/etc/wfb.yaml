@@ -4,7 +4,6 @@ wireless:
   width: 20
   mlink: 1500
   wlan_adapter: default
-  tx_index: 0
   link_control: manual
 broadcast:
   mcs_index: 2
