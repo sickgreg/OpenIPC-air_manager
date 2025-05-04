@@ -42,9 +42,42 @@ list_modes() {
 
 ###############################################################################
 info_adapter() {
+  # ── active adapter name ────────────────────────────────────────────────────
   a=$(yaml_str "$WFB_CFG" ".wireless.wlan_adapter") || exit 1
-  echo "Adapter:$a | MCS:$(yaml_str $ADAPTER_CFG .profiles.$a.mcs) | BW:$(yaml_str $ADAPTER_CFG .profiles.$a.bw) MHz | GI:$(yaml_str $ADAPTER_CFG .profiles.$a.guard)"
+
+  # ── adapter capabilities (from wlan_adapters.yaml) ─────────────────────────
+  bw=$(yaml_list "$ADAPTER_CFG" ".profiles.$a.bw"       | paste -sd ',' -)
+  gi=$(yaml_list "$ADAPTER_CFG" ".profiles.$a.guard"    | paste -sd ',' -)
+  mcs_list=$(yaml_list "$ADAPTER_CFG" ".profiles.$a.mcs"| paste -sd ',' -)
+  mcs_min=$(echo "$mcs_list" | cut -d',' -f1)
+  mcs_max=$(echo "$mcs_list" | awk -F',' '{print $NF}')
+  mcs_count=$(echo "$mcs_list" | tr ',' '\n' | wc -l)
+  if [ "$mcs_count" -eq $((mcs_max - mcs_min + 1)) ]; then
+    mcs="${mcs_min}-${mcs_max}"
+  else
+    mcs="$mcs_list"
+  fi
+  mtu=$(yaml_num "$ADAPTER_CFG" ".profiles.$a.max_mtu")
+  lm10=$(yaml_list "$ADAPTER_CFG" ".profiles.$a.link_modes.10mhz" | paste -sd ',' -)
+  lm20=$(yaml_list "$ADAPTER_CFG" ".profiles.$a.link_modes.20mhz" | paste -sd ',' -)
+  lm40=$(yaml_list "$ADAPTER_CFG" ".profiles.$a.link_modes.40mhz" | paste -sd ',' -)
+
+  echo "adapter=$a;bw=$bw;guard=$gi;mcs=$mcs;max_mtu=$mtu;link_modes_10=$lm10;link_modes_20=$lm20;link_modes_40=$lm40"
+
+  # ── live settings from wfb.yaml (wireless & broadcast sections) ────────────
+  width=$(yaml_num "$WFB_CFG" ".wireless.width")
+  chan=$(yaml_num "$WFB_CFG" ".wireless.channel")
+  txp=$(yaml_num "$WFB_CFG" ".wireless.txpower")
+  mlink=$(yaml_num "$WFB_CFG" ".wireless.mlink")
+  lctl=$(yaml_str "$WFB_CFG" ".wireless.link_control")
+  fec_k=$(yaml_num "$WFB_CFG" ".broadcast.fec_k")
+  fec_n=$(yaml_num "$WFB_CFG" ".broadcast.fec_n")
+  stbc=$(yaml_num "$WFB_CFG" ".broadcast.stbc")
+  ldpc=$(yaml_num "$WFB_CFG" ".broadcast.ldpc")
+
+  echo "wfb=width=$width;channel=$chan;txpower=$txp;mlink=$mlink;link_control=$lctl;fec_k=$fec_k;fec_n=$fec_n;stbc=$stbc;ldpc=$ldpc"
 }
+
 
 ###############################################################################
 set_mode() {
