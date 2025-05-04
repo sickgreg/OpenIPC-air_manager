@@ -1,5 +1,8 @@
 link_modes:
-  overhead_presets: [15,20,30]
+  overhead_presets:
+  - 15
+  - 20
+  - 30
   modes:
     mcs0_10mhz_long:
       mcs: 0
@@ -231,4 +234,3 @@ link_modes:
         20: 96.0
         30: 84.0
       mtu_recommendation: 3600
-
