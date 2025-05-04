@@ -81,9 +81,52 @@ info_adapter() {
 
 ###############################################################################
 set_mode() {
-  [ -z "$2" ] && { echo "Usage: $0 --set <mode>"; exit 1; }
-  yaml-cli -i "$WFB_CFG" -g ".wireless.linkmode" -s "$2" &&
-  echo "Saved mode '$2' (TODO: apply driver settings)"
+  mode="$2"
+  [ -z "$mode" ] && { echo "Usage: $0 --set <mode_key>"; exit 1; }
+
+  # Validate key exists in link_modes.yaml
+  raw=$(yaml_num "$LINKMODES_CFG" ".link_modes.modes.\"$mode\".raw_rate_mbps")
+  [ -z "$raw" ] && { echo "Unknown mode '$mode'"; exit 1; }
+
+  # Parse parts: mcs<num>_<bw>mhz_<lgi|sgi>
+  IFS='_' read -r mcs_part bw_part gi_tag <<EOF
+$mode
+EOF
+  mcs="${mcs_part#mcs}"             # strip "mcs"
+  bandwidth="${bw_part%mhz}"        # strip "mhz"
+  gi_full=$( [ "$gi_tag" = "lgi" ] && echo long || echo short )
+
+  # Current STBC / LDPC from wfb.yaml (0/1)
+  stbc=$(yaml_num "$WFB_CFG" ".broadcast.stbc"); [ -z "$stbc" ] && stbc=0
+  ldpc=$(yaml_num "$WFB_CFG" ".broadcast.ldpc"); [ -z "$ldpc" ] && ldpc=0
+
+  echo "Applying mode: $mode  (MCS=$mcs  BW=${bandwidth}MHz  GI=$gi_full  STBC=$stbc  LDPC=$ldpc)"
+
+  # ── 1) Update width in /etc/wfb.yaml ───────────────────────────────────────
+  yaml-cli -i "$WFB_CFG" -s .wireless.width "$bandwidth" >/dev/null \
+    && echo "Updated wfb.yaml width → $bandwidth MHz"
+
+  # ── 2) Re-set channel width with iw dev (assumes interface wlan0) ──────────
+  channel=$(iw dev wlan0 info 2>/dev/null | awk '/channel/ {print $2}' | head -n1)
+  if [ -n "$channel" ]; then
+    if [ "$bandwidth" -eq 40 ]; then
+      iw dev wlan0 set channel "$channel" HT40+ && echo "iw: set HT40+ on channel $channel"
+    else
+      iw dev wlan0 set channel "$channel" HT20   && echo "iw: set HT20  on channel $channel"
+    fi
+  else
+    echo "Warning: could not determine current channel via 'iw dev'"
+  fi
+
+  # ── 3) Send set_radio to wfb_tx_cmd (port 8000) ────────────────────────────
+  wfb_tx_cmd 8000 set_radio \
+      -B "$bandwidth" \
+      -G "$gi_full" \
+      -S "$stbc" \
+      -L "$ldpc" \
+      -M "$mcs"
+
+  echo "Radio configured via wfb_tx_cmd."
 }
 
 ###############################################################################
