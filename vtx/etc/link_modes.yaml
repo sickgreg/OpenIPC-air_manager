@@ -1,8 +1,5 @@
 link_modes:
-  overhead_presets:
-  - 15
-  - 20
-  - 30
+  overhead_presets: [15, 20, 30]
   modes:
     mcs0_10mhz_long:
       mcs: 0
