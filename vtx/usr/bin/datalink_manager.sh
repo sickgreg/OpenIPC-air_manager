@@ -29,6 +29,10 @@ mtu()  { yaml_num "$LINKMODES_CFG" ".link_modes.modes.$1.mtu_recommendation"; }
 
 dbg() { [ "$VERBOSE" -eq 1 ] && echo "DEBUG: $*"; }
 
+preset_val() {
+  yaml_str "$ADAPTER_CFG" ".profiles.$1.presets.$2.$3"
+}
+
 ###############################################################################
 list_modes() {
   adapter=$(yaml_str "$WFB_CFG" ".wireless.wlan_adapter") || exit 1
@@ -77,6 +81,18 @@ info_adapter() {
 
   echo "wfb=width=$width;channel=$chan;txpower=$txp;mlink=$mlink;link_control=$lctl;fec_k=$fec_k;fec_n=$fec_n;stbc=$stbc;ldpc=$ldpc"
 }
+
+
+###############################################################################
+list_presets() {
+  adapter=$(yaml_str "$WFB_CFG" ".wireless.wlan_adapter") || exit 1
+  for p in $(yaml_list "$ADAPTER_CFG" ".profiles.$adapter.presets.all_presets"); do
+    desc=$(preset_val "$adapter" "$p" description)
+    vb=$(preset_val "$adapter" "$p" video_bitrate)
+    printf "%-12s  %s  (video=%s kbps)\n" "$p" "$desc" "$vb"
+  done
+}
+
 
 
 ###############################################################################
@@ -136,6 +152,49 @@ EOF
 }
 
 ###############################################################################
+set_preset() {
+  adapter=$(yaml_str "$WFB_CFG" ".wireless.wlan_adapter") || exit 1
+  preset="$2"
+  [ -z "$preset" ] && { echo "Usage: $0 --set-preset <name>"; exit 1; }
+
+  # Validate preset exists
+  exists=$(yaml_raw "$ADAPTER_CFG" ".profiles.$adapter.presets.$preset" | grep -v '^\.')
+  [ -z "$exists" ] && { echo "Preset '$preset' not found for $adapter"; exit 1; }
+
+  # Extract fields
+  vb=$(preset_val "$adapter" "$preset" video_bitrate)
+  lm=$(preset_val "$adapter" "$preset" link_mode)
+  fk=$(preset_val "$adapter" "$preset" fec_k)
+  fn=$(preset_val "$adapter" "$preset" fec_n)
+  ml=$(preset_val "$adapter" "$preset" mlink)
+
+  echo "Applying preset '$preset'  (link_mode=$lm  bitrate=$vb kbps  FEC=$fk/$fn  mlink=$ml)"
+
+  # 1) Apply link mode (re-use existing --set)
+  "$0" --set "$lm" || { echo "Failed to set link mode"; exit 1; }
+
+  # 2) Update FEC and mlink in wfb.yaml
+  yaml-cli -i "$WFB_CFG" -s .broadcast.fec_k "$fk"  >/dev/null
+  yaml-cli -i "$WFB_CFG" -s .broadcast.fec_n "$fn"  >/dev/null
+  yaml-cli -i "$WFB_CFG" -s .wireless.mlink  "$ml"  >/dev/null
+  echo "Updated FEC (k=$fk n=$fn) and mlink=$ml"
+
+  # 3) Tell video encoder to change bitrate
+  curl -s "http://localhost/api/v1/set?video0.bitrate=${vb}" >/dev/null \
+    && echo "Video bitrate set to ${vb} kbps"
+
+
+  /etc/init.d/S95majestic restart
+  sleep 1
+  wifibroadcast start
+
+  echo "Preset '$preset' applied."
+}
+
+
+
+
+###############################################################################
 get_auto() {
   [ -z "$1" ] && { echo "Usage: $0 --get-auto <kbps> [--verbose]"; exit 1; }
   need_kbps="$1"; shift
@@ -163,12 +222,14 @@ get_auto() {
 
 ###############################################################################
 case "$1" in
-  --list-modes) list_modes ;;
-  --info)       info_adapter ;;
-  --get-auto)   shift; get_auto "$@" ;;
-  --set)        set_mode "$@" ;;
-  --verbose)    VERBOSE=1; shift; "$0" "$@" ;;
+  --list-modes)   list_modes ;;
+  --list-presets) list_presets ;;
+  --info)         info_adapter ;;
+  --get-auto)     shift; get_auto "$@" ;;
+  --set)          set_mode "$@" ;;
+  --set-preset)   set_preset "$@" ;;
+  --verbose)      VERBOSE=1; shift; "$0" "$@" ;;
   *)
-    echo "Usage: $0 --list-modes | --info | --get-auto <kbps> [--verbose] | --set <mode>"
+    echo "Usage: $0 --list-modes | --list-presets | --info | --get-auto <kbps> [--verbose] | --set <mode> | --set-preset <name>"
     exit 1;;
 esac
