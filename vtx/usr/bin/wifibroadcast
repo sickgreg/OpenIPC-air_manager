@@ -45,11 +45,13 @@ load_modules() {
 	sleep 1
 
 	if [ "$driver" != "88XXau" ]; then
-		opt1="rtw_tx_pwr_by_rate=0"
-		opt2="rtw_tx_pwr_lmt_enable=0"
+		opt1="rtw_tx_pwr_by_rate=2"
+		opt2="rtw_tx_pwr_lmt_enable=2"
 	fi
 
-	modprobe "$driver" "$opt1" "$opt2 rtw_regd_src=1"
+	#modprobe "$driver" "$opt1" "$opt2"
+	#Old settings with full tx power
+	modprobe "$driver" rtw_regd_src=1 rtw_tx_pwr_by_rate=0 rtw_tx_pwr_lmt_enable=0
 	sleep 3
 
 	if ! ifconfig "$wfb_dev" up; then
@@ -75,7 +77,8 @@ load_interface() {
 	iw "$wfb_dev" set channel "$channel" "$wfb_width"
 	iw reg set 00
 
-	tx_manager.sh set_tx_power "$txpower" --mcs "$mcs_index"
+	[ "$driver" = "88XXau" ] && wfb_power=$((txpower * -100)) || wfb_power=$((txpower * 50))
+	iw "$wfb_dev" set txpower fixed "$wfb_power"
 }
 
 load_wfb() {
