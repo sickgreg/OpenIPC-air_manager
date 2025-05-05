@@ -127,6 +127,12 @@ EOF
       -M "$mcs"
 
   echo "Radio configured via wfb_tx_cmd."
+
+  # ── 4) Update gi,mcs in /etc/wfb.yaml ───────────────────────────────────────
+  yaml-cli -i "$WFB_CFG" -s .broadcast.mcs_index "$mcs" >/dev/null \
+    && echo "Updated wfb.yaml mcs_index → $mcs MHz"
+  yaml-cli -i "$WFB_CFG" -s .wireless.gi "$gi_full" >/dev/null \
+    && echo "Updated wfb.yaml guard interval → $gi_full MHz"
 }
 
 ###############################################################################
