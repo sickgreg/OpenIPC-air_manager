@@ -56,7 +56,8 @@ profiles:
       20mhz: [mcs0_20mhz_lgi, mcs1_20mhz_lgi, mcs2_20mhz_lgi, mcs3_20mhz_lgi, mcs4_20mhz_sgi, mcs5_20mhz_sgi]
       40mhz: [mcs1_40mhz_lgi, mcs2_40mhz_lgi, mcs3_40mhz_lgi, mcs4_40mhz_sgi, mcs5_40mhz_sgi]
     presets:
-      name: long_range
+      all_presets: [long_range, medium_range,short_range,cinematic]
+      long_range:
         description: "Long range datalink profile with low bitrate and high resilience. Recommended for 30-60fps video or for challenging enviroments."
         video_bitrate: 4096
         link_mode: mcs1_20mhz_lgi
@@ -64,7 +65,7 @@ profiles:
         fec_n: 12
         mlink: 1200
         recommended_diversity: [1,2,3,4]
-      name: medium_range
+      medium_range:
         description: "Medium range datalink profile with medium bitrate and medium resilience."
         video_bitrate: 8192
         link_mode: mcs2_20mhz_lgi
@@ -72,7 +73,7 @@ profiles:
         fec_n: 12
         mlink: 2000
         recommended_diversity: [1,2,3,4]
-      name: short_range
+      short_range:
         description: "Short range datalink profile with medium-high bitrate and medium resilience."
         video_bitrate: 12288
         link_mode: mcs3_20mhz_lgi
@@ -80,7 +81,7 @@ profiles:
         fec_n: 12
         mlink: 2400
         recommended_diversity: [2,3,4]
-      name: cinematic
+      cinematic:
         description: "Very short range datalink profile with high bitrate and low resilience."
         video_bitrate: 25600
         link_mode: mcs5_20mhz_sgi
