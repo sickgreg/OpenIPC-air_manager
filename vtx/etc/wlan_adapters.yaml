@@ -83,7 +83,7 @@ profiles:
         recommended_diversity: [2,3,4]
       cinematic:
         description: "Very short range datalink profile with high bitrate and low resilience."
-        video_bitrate: 25600
+        video_bitrate: 22600
         link_mode: mcs5_20mhz_sgi
         fec_k: 8
         fec_n: 12
