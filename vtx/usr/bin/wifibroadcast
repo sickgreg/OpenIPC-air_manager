@@ -45,13 +45,11 @@ load_modules() {
 	sleep 1
 
 	if [ "$driver" != "88XXau" ]; then
-		opt1="rtw_tx_pwr_by_rate=2"
-		opt2="rtw_tx_pwr_lmt_enable=2"
+		opt1="rtw_tx_pwr_by_rate=0"
+		opt2="rtw_tx_pwr_lmt_enable=0"
 	fi
 
-	#modprobe "$driver" "$opt1" "$opt2"
-	#Old settings with full tx power
-	modprobe "$driver" rtw_regd_src=1 rtw_tx_pwr_by_rate=0 rtw_tx_pwr_lmt_enable=0
+	modprobe "$driver" "$opt1" "$opt2"
 	sleep 3
 
 	if ! ifconfig "$wfb_dev" up; then
@@ -77,7 +75,7 @@ load_interface() {
 	iw "$wfb_dev" set channel "$channel" "$wfb_width"
 	iw reg set 00
 
-	[ "$driver" = "88XXau" ] && wfb_power=$((txpower * -100)) || wfb_power=$((txpower * 50))
+	[ "$driver" = "88XXau" ] && wfb_power=$((1 * -100)) || wfb_power=$((1 * 50))
 	iw "$wfb_dev" set txpower fixed "$wfb_power"
 }
 
@@ -91,6 +89,8 @@ start_broadcast() {
 	echo_log "Starting wfb_tx"
 	wfb_tx -K "$wfb_key" -M "$mcs_index" -B "$width" -k "$fec_k" -n "$fec_n" -U rtp_local \
 		-S "$stbc" -L "$ldpc" -i "$link_id" -C 8000 "$wfb_dev" &> /dev/null &
+	sleep 0.2
+	tx_manager.sh set_tx_power $txpower
 }
 
 start_tunnel() {
