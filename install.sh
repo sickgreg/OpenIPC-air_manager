@@ -96,7 +96,7 @@ cp -f video_modes_imx*      /etc/
 
 # ── Countdown before reconnect ────────────────────────────────────────────────
 echo "Reconnecting in 25 s..."
-for i in $(seq 25 -1 1); do
+for i in $(seq 30 -1 1); do
     printf "\r%d seconds remaining..." "$i"
     sleep 1
 done
