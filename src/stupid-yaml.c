@@ -567,7 +567,8 @@ int main(int argc, char *argv[]) {
             }
             fflush(stdout);
         } else {
-            printf("Node not found.\n");
+            //Printout should be empty for WebUI compatibility.
+            //printf("Node not found.\n");
         }
     } else if (set_path) {
         YAMLNode *node = find_or_create_node(root, set_path);
@@ -608,11 +609,11 @@ int main(int argc, char *argv[]) {
                 node->value = strdup(set_value);
                 node->type = YAML_NODE_SCALAR;
             }
-            printf("Value set at '%s'.\n", set_path);
+            //printf("Value set at '%s'.\n", set_path);
             save_yaml(filename, root);
             //printf("Changes saved to file '%s'.\n", filename);
         } else {
-            printf("Could not set value at '%s'.\n", set_path);
+            //printf("Could not set value at '%s'.\n", set_path);
         }
     } else if (delete_path) {
         int result = delete_node_at_path(root, delete_path);
