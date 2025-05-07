@@ -62,6 +62,7 @@ ssh-keyscan -H "$IP" 2>/dev/null >> /root/.ssh/known_hosts || true
 # ── Local file permissions ────────────────────────────────────────────────────
 echo "chmod +x on relevant files ..."
 chmod -R +x vtx/usr/bin/*
+chmod -R +x vtx/bin/*
 chmod -R +x vrx/usr/local/bin/*
 chmod +x air_man_cmd.sh video_mode_chooser.sh
 
@@ -74,6 +75,7 @@ sshpass -e ssh $SSH_OPTS -t root@"$IP" 'killall -q air_man     || true' 2>&1 | g
 # ── Copy payload to device ────────────────────────────────────────────────────
 echo "Starting scp ..."
 sshpass -e scp $SSH_OPTS -v -r -p vtx/usr/*      root@"$IP":/usr/      2>&1 | grep -v debug1
+sshpass -e scp $SSH_OPTS -v -r -p vtx/bin/*      root@"$IP":/bin/      2>&1 | grep -v debug1
 sshpass -e scp $SSH_OPTS -v -r -p vtx/etc/*      root@"$IP":/etc/      2>&1 | grep -v debug1
 sshpass -e scp $SSH_OPTS -v    -p air_man_cmd.sh root@"$IP":/usr/bin/  2>&1 | grep -v debug1
 
