@@ -1,0 +1,5 @@
+#!/bin/sh
+for arg in "$@"; do
+  [ "$arg" = "-i" ] && exec /usr/bin/yaml-cli "$@"
+done
+exec /usr/bin/yaml-cli -i /etc/majestic.yaml "$@"
