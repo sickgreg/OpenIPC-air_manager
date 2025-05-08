@@ -77,6 +77,16 @@ profiles:
         fec_n: 12
         mlink: 2000
         recommended_diversity: [1,2,3,4]
+      medium_race:
+        description: "Medium range datalink profile with medium bitrate and medium resilience."
+        video_bitrate: 8192
+        fps: 120
+        exposure: 8
+        link_mode: mcs2_20mhz_lgi
+        fec_k: 4
+        fec_n: 6
+        mlink: 2000
+        recommended_diversity: [1,2,3,4]
       short_range:
         description: "Short range datalink profile with medium-high bitrate and medium resilience."
         video_bitrate: 12288
@@ -93,8 +103,8 @@ profiles:
         fps: 90
         exposure: 8
         link_mode: mcs5_20mhz_sgi
-        fec_k: 8
-        fec_n: 12
+        fec_k: 4
+        fec_n: 6
         mlink: 3200
         recommended_diversity: [3,4]
     bl-m8731bu4:
