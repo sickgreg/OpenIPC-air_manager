@@ -189,7 +189,7 @@ set_preset() {
   # 4) Set permanent majestic settings.
   yaml-cli -i "$MAJESTIC_CFG" -s .video0.bitrate "$vb"  >/dev/null
   yaml-cli -i "$MAJESTIC_CFG" -s .video0.fps "$fp"  >/dev/null
-  yaml-cli -i "$MAJESTIC_CFG" -s .video0.exposure "$exp"  >/dev/null
+  yaml-cli -i "$MAJESTIC_CFG" -s .isp.exposure "$exp"  >/dev/null
   echo "Updated bitrate ($vb) and fps=$fp and exposure=$exp"
 
   /etc/init.d/S95majestic restart
