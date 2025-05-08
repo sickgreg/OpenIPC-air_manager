@@ -60,6 +60,7 @@ profiles:
       long_range:
         description: "Long range datalink profile with low bitrate and high resilience. Recommended for 30-60fps video or for challenging enviroments."
         video_bitrate: 4096
+        fps: 90
         link_mode: mcs1_20mhz_lgi
         fec_k: 8
         fec_n: 12
@@ -68,6 +69,7 @@ profiles:
       medium_range:
         description: "Medium range datalink profile with medium bitrate and medium resilience."
         video_bitrate: 8192
+        fps: 90
         link_mode: mcs2_20mhz_lgi
         fec_k: 8
         fec_n: 12
@@ -76,6 +78,7 @@ profiles:
       short_range:
         description: "Short range datalink profile with medium-high bitrate and medium resilience."
         video_bitrate: 12288
+        fps: 90
         link_mode: mcs3_20mhz_lgi
         fec_k: 8
         fec_n: 12
@@ -84,6 +87,7 @@ profiles:
       cinematic:
         description: "Very short range datalink profile with high bitrate and low resilience."
         video_bitrate: 22600
+        fps: 90
         link_mode: mcs5_20mhz_sgi
         fec_k: 8
         fec_n: 12
