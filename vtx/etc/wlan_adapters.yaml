@@ -107,7 +107,7 @@ profiles:
         fec_n: 6
         mlink: 3200
         recommended_diversity: [3,4]
-    bl-m8731bu4:
+  bl-m8731bu4:
     description: "Tested with real instruments and mapped."
     bw: [10,20,40]
     stbc: [0]
