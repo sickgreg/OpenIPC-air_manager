@@ -101,7 +101,7 @@ set_mode() {
   [ -z "$mode" ] && { echo "Usage: $0 --set <mode_key>"; exit 1; }
 
   # Validate key exists in link_modes.yaml
-  raw=$(yaml_num "$LINKMODES_CFG" ".link_modes.modes.\"$mode\.raw_rate_mbps)
+  raw=$(yaml_num "$LINKMODES_CFG" ".link_modes.modes."$mode.raw_rate_mbps)
   [ -z "$raw" ] && { echo "Unknown mode '$mode'"; exit 1; }
 
   # Parse parts: mcs<num>_<bw>mhz_<lgi|sgi>
