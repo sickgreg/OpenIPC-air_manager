@@ -4,6 +4,7 @@
 ADAPTER_CFG="/etc/wlan_adapters.yaml"
 LINKMODES_CFG="/etc/link_modes.yaml"
 WFB_CFG="/etc/wfb.yaml"
+MAJESTIC_CFG="/etc/majestic.yaml"
 VERBOSE=0
 
 ###############################################################################
@@ -183,6 +184,7 @@ set_preset() {
   curl -s "http://localhost/api/v1/set?video0.bitrate=${vb}" >/dev/null \
     && echo "Video bitrate set to ${vb} kbps"
 
+  yaml-cli -i "$MAJESTIC_CFG" -s .video0.bitrate "$vb"  >/dev/null
 
   /etc/init.d/S95majestic restart
   sleep 1
