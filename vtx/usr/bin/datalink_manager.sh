@@ -168,7 +168,8 @@ set_preset() {
   fk=$(preset_val "$adapter" "$preset" fec_k)
   fn=$(preset_val "$adapter" "$preset" fec_n)
   ml=$(preset_val "$adapter" "$preset" mlink)
-
+  fp=$(preset_val "$adapter" "$preset" fps)
+ 
   echo "Applying preset '$preset'  (link_mode=$lm  bitrate=$vb kbps  FEC=$fk/$fn  mlink=$ml)"
 
   # 1) Apply link mode (re-use existing --set)
@@ -181,10 +182,13 @@ set_preset() {
   echo "Updated FEC (k=$fk n=$fn) and mlink=$ml"
 
   # 3) Tell video encoder to change bitrate
-  curl -s "http://localhost/api/v1/set?video0.bitrate=${vb}" >/dev/null \
-    && echo "Video bitrate set to ${vb} kbps"
+  #curl -s "http://localhost/api/v1/set?video0.bitrate=${vb}" >/dev/null \
+  #  && echo "Video bitrate set to ${vb} kbps"
 
+  # 4) Set permanent majestic settings.
   yaml-cli -i "$MAJESTIC_CFG" -s .video0.bitrate "$vb"  >/dev/null
+  yaml-cli -i "$MAJESTIC_CFG" -s .video0.fps "$fp"  >/dev/null
+  echo "Updated bitrate ($vb) and fps=$fp"
 
   /etc/init.d/S95majestic restart
   sleep 1
