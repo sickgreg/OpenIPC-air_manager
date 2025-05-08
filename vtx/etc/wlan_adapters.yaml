@@ -145,14 +145,10 @@ profiles:
     mcs: [0,1,2]
     max_mtu: 1500
     tx_power:
-      mcs0: [50,50,50,50,50]
-      mcs1: [50,50,50,50,50]
-      mcs2: [50,50,50,50,50]
+      mcs0: [50]
+      mcs1: [50]
+      mcs2: [50]
     pwr_mw:
       0: 1mW
-      1: 1mW
-      2: 1mW
-      3: 1mW
-      4: 1mW
     link_modes:
       20mhz: [mcs0_20mhz_lgi, mcs1_20mhz_lgi, mcs2_20mhz_lgi, mcs3_20mhz_lgi, mcs4_20mhz_sgi, mcs5_20mhz_sgi]
