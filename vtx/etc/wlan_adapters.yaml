@@ -63,8 +63,8 @@ profiles:
         fps: 90
         exposure: 11
         link_mode: mcs1_20mhz_lgi
-        fec_k: 8
-        fec_n: 12
+        fec_k: 4
+        fec_n: 6
         mlink: 1200
         recommended_diversity: [1,2,3,4]
       medium_range:
