@@ -66,7 +66,7 @@ profiles:
         dfs: [52,60,100,108,116,124,132]
         non-dfs: [36,44,149,157,161]
     presets:
-      all_presets: [long_range, medium_range,short_range,cinematic]
+      all_presets: [long_range, medium_range,medium_race,short_range,cinematic]
       long_range:
         description: "Long range datalink profile with low bitrate and high resilience. Recommended for 30-60fps video or for challenging enviroments."
         video_bitrate: 4096
