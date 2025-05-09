@@ -81,7 +81,7 @@ load_interface() {
 
 load_wfb() {
 	wfb_rx -K "$wfb_key" -i "$link_id" -p "$1" -u "$3" "$wfb_dev" &> /dev/null &
-	wfb_tx -K "$wfb_key" -M "$tun_index" -B "$width" -k "$fec_k" -n "$fec_n" \
+	wfb_tx -K "$wfb_key" -M "$tun_index" -B "$tun_width" -k "$fec_k" -n "$fec_n" \
 		-S "$stbc" -L "$ldpc" -i "$link_id" -p "$2" -u "$4" "$wfb_dev" &> /dev/null &
 }
 
