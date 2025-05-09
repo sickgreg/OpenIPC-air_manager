@@ -168,8 +168,6 @@ set_preset() {
   fk=$(preset_val "$adapter" "$preset" fec_k)
   fn=$(preset_val "$adapter" "$preset" fec_n)
   ml=$(preset_val "$adapter" "$preset" mlink)
-  fp=$(preset_val "$adapter" "$preset" fps)
-  exp=$(preset_val "$adapter" "$preset" exposure)
  
   echo "Applying preset '$preset'  (link_mode=$lm  bitrate=$vb kbps  FEC=$fk/$fn  mlink=$ml)"
 
@@ -188,9 +186,7 @@ set_preset() {
 
   # 4) Set permanent majestic settings.
   yaml-cli -i "$MAJESTIC_CFG" -s .video0.bitrate "$vb"  >/dev/null
-  yaml-cli -i "$MAJESTIC_CFG" -s .video0.fps "$fp"  >/dev/null
-  yaml-cli -i "$MAJESTIC_CFG" -s .isp.exposure "$exp"  >/dev/null
-  echo "Updated bitrate ($vb) and fps=$fp and exposure=$exp"
+  echo "Updated bitrate ($vb)"
 
   /etc/init.d/S95majestic restart
   sleep 1
