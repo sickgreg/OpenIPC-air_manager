@@ -55,6 +55,16 @@ profiles:
       10mhz: [mcs0_10mhz_lgi, mcs1_10mhz_lgi, mcs2_10mhz_lgi, mcs2_10mhz_sgi, mcs3_10mhz_lgi, mcs3_10mhz_sgi]
       20mhz: [mcs0_20mhz_lgi, mcs1_20mhz_lgi, mcs2_20mhz_lgi, mcs3_20mhz_lgi, mcs4_20mhz_sgi, mcs5_20mhz_sgi]
       40mhz: [mcs1_40mhz_lgi, mcs2_40mhz_lgi, mcs3_40mhz_lgi, mcs4_40mhz_sgi, mcs5_40mhz_sgi]
+    channels:
+      10: 
+        dfs: [100,104,108,112,116,120,124,128,132,136,140,144]
+        non-dfs: [36,40,44,48,149,153,157,161,165]      
+      20:
+        dfs: [100,104,108,112,116,120,124,128,132,136,140,144]
+        non-dfs: [36,40,44,48,149,153,157,161,165]
+      40: 
+        dfs: [52,60,100,108,116,124,132]
+        non-dfs: [36,44,149,157,161]
     presets:
       all_presets: [long_range, medium_range,short_range,cinematic]
       long_range:
@@ -78,7 +88,7 @@ profiles:
         mlink: 2000
         recommended_diversity: [1,2,3,4]
       medium_race:
-        description: "Medium range datalink profile with medium bitrate and medium resilience."
+        description: "Medium range datalink profile with low latency medium bitrate and medium resilience."
         video_bitrate: 8192
         fps: 120
         exposure: 8
