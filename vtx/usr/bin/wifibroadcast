@@ -82,7 +82,7 @@ load_interface() {
 load_wfb() {
 	wfb_rx -K "$wfb_key" -i "$link_id" -p "$1" -u "$3" "$wfb_dev" &> /dev/null &
 	wfb_tx -K "$wfb_key" -M "$tun_index" -B "$tun_width" -k "$fec_k" -n "$fec_n" \
-		-S "$stbc" -L "$ldpc" -i "$link_id" -p "$2" -u "$4" "$wfb_dev" &> /dev/null &
+		-S "$stbc" -L "$ldpc" -i "$link_id" -p "$2" -u "$4" -C "$5" "$wfb_dev" &> /dev/null &
 }
 
 start_broadcast() {
@@ -95,7 +95,7 @@ start_broadcast() {
 
 start_tunnel() {
 	echo_log "Starting wfb_tun"
-	load_wfb 160 32 5800 5801
+	load_wfb 160 32 5800 5801 8001
 	wfb_tun -a 10.5.0.10/24 > /dev/null &
 }
 
@@ -107,7 +107,7 @@ start_telemetry() {
 	port_tx=14551
 
 	echo_log "Starting $router"
-	load_wfb 144 16 "$port_rx" "$port_tx"
+	load_wfb 144 16 "$port_rx" "$port_tx" 8002
 
 	if [ "$router" = "mavfwd" ]; then
 		mavfwd -b 115200 -c 8 -p 100 -a 15 -t -m /dev/"$serial" \
