@@ -1,620 +1,236 @@
-/*
- * client.c - Command-line client for controlling alink_manager
- *
- * Compile with:
- *     gcc -o client client.c
- *
- * Usage:
- *   client [--verbose] <server_ip> "<command>"
- *   client --help
- *
- * Options:
- *   -v, --verbose   Enable debug output
- *   -h, --help      Show this help message
- *
- * Commands supported by the server:
- *   start_alink
- *       Start alink_drone on the drone.
- *
- *   stop_alink
- *       Stop alink_drone (killall alink_drone).
- *
- *   restart_majestic
- *       Restart the majestic process on the drone (killall -HUP majestic).
- *
- *   change_channel <n>
- *       Change the drone's WiFi channel to <n>. Requires ground-station confirmation.
- *
- *   confirm_channel_change
- *       Confirm a pending channel change (sent automatically by this client).
- *
- *   set_video_mode <size> <fps> <exposure> <crop>
- *       Atomically set video size, frame rate, exposure, and crop.
- *       <crop> must be quoted if it contains spaces, e.g. "100 200 300 400".
- *
- *   stop_msposd
- *       Stop msposd process.
- *
- *   start_msposd
- *       Start msposd process.
- *
- *   adjust_txprofiles
- *       Update /etc/txprofiles.conf and restart alink_drone.
- *
- *   adjust_alink
- *       Update /etc/alink.conf and restart alink_drone.
- *
- *   info
- *       Retrieve current configuration and status from the drone.
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <getopt.h>
-#include <arpa/inet.h>
-#include <sys/time.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <ctype.h>
-
-#define PORT 12355
-#define BUF_SIZE 1024
-
-static int verbose = 0;
-
-// Print usage and command descriptions
-void print_help(const char *prog) {
-    printf(
-        "Usage:\n"
-        "  %s [--verbose] <server_ip> \"<command>\"\n"
-        "  %s --help\n\n"
-        "Options:\n"
-        "  -v, --verbose   Enable debug output\n"
-        "  -h, --help      Show this help message\n\n"
-        "Server commands:\n"
-        "  start_alink\n"
-        "      Start alink_drone on the drone.\n\n"
-        "  stop_alink\n"
-        "      Stop alink_drone (killall alink_drone).\n\n"
-        "  restart_majestic\n"
-        "      Restart the majestic process on the drone (killall -HUP majestic).\n\n"
-        "  change_channel <n>\n"
-        "      Change the drone's WiFi channel to <n>.\n"
-        "      Requires ground-station confirmation.\n\n"
-        "  confirm_channel_change\n"
-        "      Confirm a pending channel change (sent automatically).\n\n"
-		"  set_alink_power <0–10>\n"
-		"      Set the drone’s alink TX power level (0–10).\n\n"
-        "  set_video_mode <size> <fps> <exposure> <crop>\n"
-        "      Atomically set video size, frame rate, exposure, and crop.\n"
-        "      <crop> must be quoted if it contains spaces, e.g. \"100 200 300 400\".\n\n"
-        "  stop_msposd\n"
-        "      Stop the msposd process.\n\n"
-        "  start_msposd\n"
-        "      Start the msposd process.\n\n"
-        "  adjust_txprofiles\n"
-        "      Update /etc/txprofiles.conf and restart alink_drone.\n\n"
-        "  adjust_alink\n"
-        "      Update /etc/alink.conf and restart alink_drone.\n\n"
-        "  info\n"
-        "      Retrieve current configuration and status from the drone.\n\n"
-        "Menu‐script commands:\n"
-        "  <any command supported by your air_man_cmd.sh>\n"
-        "      e.g. get air camera contrast, set air wfbng power 30,\n"
-        "      values air camera size, values air telemetry serial, etc.\n",
-        prog, prog
-    );
-}
-
-#define CONNECT_TIMEOUT   2   // seconds to wait per connect()
-#define MAX_CONNECT_TRIES 3   // how many times to retry
-
-// Attempts a non-blocking connect with a timeout.
-// Returns 0 on success, -1 on failure (errno set appropriately).
-static int connect_with_timeout(int sock,
-                                const struct sockaddr_in *addr,
-                                socklen_t addrlen,
-                                int timeout_secs)
-{
-    int flags, res, err;
-    socklen_t errlen;
-
-    // 1) make socket non-blocking
-    if ((flags = fcntl(sock, F_GETFL, 0)) < 0)
-        return -1;
-    if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0)
-        return -1;
-
-    // 2) start connect()
-    res = connect(sock, (const struct sockaddr*)addr, addrlen);
-    if (res < 0 && errno == EINPROGRESS) {
-        // 3) wait for it to become writable
-        fd_set wfds;
-        struct timeval tv = { timeout_secs, 0 };
-        FD_ZERO(&wfds);
-        FD_SET(sock, &wfds);
-        res = select(sock + 1, NULL, &wfds, NULL, &tv);
-        if (res <= 0) {
-            // timeout or select error
-            errno = (res == 0 ? ETIMEDOUT : errno);
-            goto fail;
-        }
-        // 4) check actual connect() result
-        err = 0; errlen = sizeof(err);
-        if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &errlen) < 0)
-            goto fail;
-        if (err) {
-            errno = err;
-            goto fail;
-        }
-    }
-    else if (res < 0) {
-        // immediate error other than EINPROGRESS
-        goto fail;
-    }
-
-    // 5) restore flags
-    if (fcntl(sock, F_SETFL, flags) < 0)
-        return -1;
-    return 0;
-
-fail:
-    // restore blocking just in case
-    fcntl(sock, F_SETFL, flags);
-    return -1;
-}
-
-int send_command_get_response(const char *server_ip,
-                              const char *command,
-                              char *response,
-                              size_t resp_size)
-{
-    int sock, attempt;
-    struct sockaddr_in server_addr;
-    struct timeval tv;
-
-    // Prepare address struct once
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port   = htons(PORT);
-    if (inet_pton(AF_INET, server_ip, &server_addr.sin_addr) <= 0) {
-        perror("Invalid address");
-        return -1;
-    }
-
-    for (attempt = 1; attempt <= MAX_CONNECT_TRIES; ++attempt) {
-        if (verbose)
-            printf("[DEBUG] Creating socket (try %d)...\n", attempt);
-        if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-            perror("Socket creation error");
-            return -1;
-        }
-
-        // 2s recv timeout (unchanged)
-        tv.tv_sec  = CONNECT_TIMEOUT;
-        tv.tv_usec = 0;
-        setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-
-        if (verbose)
-            printf("[DEBUG] Connecting to %s:%d (try %d)...\n",
-                   server_ip, PORT, attempt);
-
-        if (connect_with_timeout(sock, &server_addr, sizeof(server_addr),
-                                 CONNECT_TIMEOUT) == 0) {
-            // success!
-            break;
-        }
-
-        perror("[DEBUG] connect() failed");
-        close(sock);
-
-        if (attempt == MAX_CONNECT_TRIES) {
-            fprintf(stderr, "Failed to connect after %d attempts\n",
-                    MAX_CONNECT_TRIES);
-            return -1;
-        }
-
-        // small back-off before retrying
-        sleep(1);
-    }
-
-    // At this point `sock` is connected.
-    if (verbose)
-        printf("[DEBUG] Sending command: %s\n", command);
-    if (send(sock, command, strlen(command), 0) < 0) {
-        perror("Send failed");
-        close(sock);
-        return -1;
-    }
-
-    int n = read(sock, response, resp_size - 1);
-    if (n > 0) {
-        response[n] = '\0';
-    } else {
-        snprintf(response, resp_size, "No immediate rejection.  Moving on...");
-    }
-    if (verbose)
-        printf("[DEBUG] Received: %s\n", response);
-    close(sock);
-    return 0;
-}
-
-// Read NIC list from /etc/default/wifibroadcast
-char **get_nics(int *count) {
-    FILE *fp = fopen("/etc/default/wifibroadcast", "r");
-    if (!fp) {
-        if (verbose)
-            printf("[DEBUG] Cannot open /etc/default/wifibroadcast\n");
-        *count = 0;
-        return NULL;
-    }
-    char line[256], nics_line[256] = "";
-    while (fgets(line, sizeof(line), fp)) {
-        if (strncmp(line, "WFB_NICS=", 9) == 0) {
-            strcpy(nics_line, strchr(line, '=') + 1);
-            nics_line[strcspn(nics_line, "\r\n")] = 0;
-            break;
-        }
-    }
-    fclose(fp);
-    if (verbose)
-        printf("[DEBUG] Raw NICs line: %s\n", nics_line);
-    // Strip outer quotes
-    int len = strlen(nics_line);
-    if (len >= 2 && nics_line[0]=='"' && nics_line[len-1]=='"') {
-        memmove(nics_line, nics_line+1, len-2);
-        nics_line[len-2] = '\0';
-    }
-    if (verbose)
-        printf("[DEBUG] Processed NICs line: %s\n", nics_line);
-
-    char *copy = strdup(nics_line), *tok = strtok(copy, " ");
-    int alloc = 4, idx = 0;
-    char **arr = malloc(alloc * sizeof(char*));
-    while (tok) {
-        if (idx >= alloc) {
-            alloc *= 2;
-            arr = realloc(arr, alloc * sizeof(char*));
-        }
-        arr[idx++] = strdup(tok);
-        if (verbose)
-            printf("[DEBUG] Found NIC: %s\n", tok);
-        tok = strtok(NULL, " ");
-    }
-    free(copy);
-    *count = idx;
-    return arr;
-}
-
-// Set all NICs to given channel
-void local_change_channel(int channel) {
-    int cnt = 0;
-    char **nics = get_nics(&cnt);
-    if (!nics || cnt == 0) {
-        if (verbose)
-            printf("[DEBUG] No NICs to change\n");
-        return;
-    }
-    for (int i = 0; i < cnt; i++) {
-        char cmd[128];
-        snprintf(cmd, sizeof(cmd), "iw dev %s set channel %d", nics[i], channel);
-        if (verbose)
-            printf("[DEBUG] %s\n", cmd);
-        system(cmd);
-        free(nics[i]);
-    }
-    free(nics);
-}
-
-// Helper: copy [s..e) into dest (must have room), null-terminate
-static void copy_range(char *dest, const char *s, const char *e) {
-    size_t n = e - s;
-    memcpy(dest, s, n);
-    dest[n] = '\0';
-}
-
-// Update given file. Returns 1 on success, 0 on failure.
-int update_file(const char *filepath, const char *key, int new_value) {
-    FILE *fp = fopen(filepath, "r");
-    if (!fp) {
-        fprintf(stderr, "Cannot open file: %s\n", filepath);
-        return 0;
-    }
-
-    char tmp_filepath[256];
-    snprintf(tmp_filepath, sizeof(tmp_filepath), "%s.tmp", filepath);
-    FILE *fp_tmp = fopen(tmp_filepath, "w");
-    if (!fp_tmp) {
-        fprintf(stderr, "Cannot open temporary file: %s\n", tmp_filepath);
-        fclose(fp);
-        return 0;
-    }
-
-    char line[1024];
-    while (fgets(line, sizeof(line), fp)) {
-        char *keypos = strstr(line, key);
-        if (keypos) {
-            // locate '=' after the key
-            char *eq = strchr(keypos, '=');
-            if (eq) {
-                // find start of the old integer
-                char *p = eq + 1;
-                // skip whitespace
-                while (*p && isspace((unsigned char)*p)) p++;
-                // skip optional opening quote
-                int has_quote = 0;
-                if (*p == '"' || *p == '\'') {
-                    has_quote = *p;
-                    p++;
-                }
-                // now p points at first digit (hopefully)
-                char *num_start = p;
-                while (*p && isdigit((unsigned char)*p)) p++;
-                char *num_end = p;
-                // if there was a quote, skip the closing one
-                if (has_quote && *p == has_quote) p++;
-
-                // build new line
-                // part1 = everything up to num_start
-                char part1[1024], part3[1024];
-                copy_range(part1, line, num_start);
-                copy_range(part3, p, line + strlen(line)); 
-
-                // write: part1 + new_value + part3
-                fprintf(fp_tmp, "%s%d%s", part1, new_value, part3);
-                continue;
-            }
-        }
-        // no match or malformed line → copy unchanged
-        fputs(line, fp_tmp);
-    }
-
-    fclose(fp);
-    fclose(fp_tmp);
-
-    if (rename(tmp_filepath, filepath) != 0) {
-        perror("Error renaming temporary file");
-        return 0;
-    }
-    return 1;
-}
+#include <sys/stat.h>
 
 
-void save_new_channel_to_files(int channel) {
-    const char *file1 = "/etc/wifibroadcast.cfg";
-    const char *file2 = "/config/gs.conf";
-    int success1 = 0, success2 = 0;
-
-    // Update file1 unconditionally (key is "wifi_channel")
-    success1 = update_file(file1, "wifi_channel", channel);
-
-    // Update file2 only if it exists (key is "wfb_channel")
-    if (access(file2, F_OK) == 0) {
-        success2 = update_file(file2, "wfb_channel", channel);
-    }
-
-    // Report final status
-    if (!success1 && !success2) {
-        fprintf(stderr,
-                "Warning: Could not write to either file.  Channel change will not persist after reboot!\n");
-    } else {
-        if (success1)
-            fprintf(stderr, "Successfully wrote new channel to %s\n", file1);
-        if (success2)
-            fprintf(stderr, "Successfully wrote new channel to %s\n", file2);
-    }
-}
-
+const char *bash_script =
+"#!/usr/bin/env bash\n"
+"set -euo pipefail\n"
+"\n"
+"PORT=12355\n"
+"VERBOSE=0\n"
+"\n"
+"print_help() {\n"
+"  cat <<EOF\n"
+"Usage:\n"
+"  $0 [--verbose] <server_ip> \"<command>\"\n"
+"  $0 --help\n"
+"\n"
+"Options:\n"
+"  -v, --verbose   Enable debug output\n"
+"  -h, --help      Show this help message\n"
+"\n"
+"Commands (use quotes for multiple words):\n"
+"  start_alink\n"
+"  stop_alink\n"
+"  restart_majestic\n"
+"  \"change_channel <n>\"\n"
+"  confirm_channel_change\n"
+"  \"set_alink_power <0–10>\"\n"
+"  \"set_video_mode <size> <fps> <exposure> '<crop>'\"\n"
+"  restart_wfb\n"
+"  restart_msposd\n"
+"  (and any air_man_cmd.sh commands)\n"
+"EOF\n"
+"}\n"
+"\n"
+"# Parse flags\n"
+"while [[ $# -gt 0 ]]; do\n"
+"  case \"$1\" in\n"
+"    -v|--verbose) VERBOSE=1; shift ;;\n"
+"    -h|--help)     print_help; exit 0 ;;\n"
+"    --)            shift; break ;;\n"
+"    -*)            echo \"Unknown option: $1\" >&2; print_help; exit 1 ;;\n"
+"    *)             break ;;\n"
+"  esac\n"
+"done\n"
+"\n"
+"if [[ $# -lt 2 ]]; then\n"
+"  print_help; exit 1\n"
+"fi\n"
+"\n"
+"SERVER_IP=$1; shift\n"
+"CMD=\"$1\"\n"
+"\n"
+"[[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] Command → $CMD\"\n"
+"\n"
+"# Translate legacy alias\n"
+"if [[ $CMD =~ ^set\\ air\\ wfbng\\ air_channel\\ ([0-9]+)$ ]]; then\n"
+"  CMD=\"change_channel ${BASH_REMATCH[1]}\"\n"
+"  [[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] Alias → $CMD\"\n"
+"fi\n"
+"\n"
+"# 1) Non-change_channel: try up to 3×, then exit\n"
+"if [[ ! $CMD =~ ^change_channel\\ ([0-9]+)$ ]]; then\n"
+"  MAX=3\n"
+"  for i in $(seq 1 $MAX); do\n"
+"    [[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] Simple cmd attempt $i/$MAX\"\n"
+"    set +e\n"
+"    RESPONSE=$(printf '%s\\n' \"$CMD\" | nc -w2 \"$SERVER_IP\" $PORT)\n"
+"    STAT=$?\n"
+"    set -e\n"
+"    if [[ $STAT -eq 0 && -n $RESPONSE ]]; then\n"
+"      echo \"$RESPONSE\"\n"
+"      exit 0\n"
+"    fi\n"
+"    sleep 0.5\n"
+"  done\n"
+"  echo \"No response from VTX after $MAX attempts\"\n"
+"  exit 1\n"
+"fi\n"
+"\n"
+"# 2) change_channel logic (with 3× retries on no reply)\n"
+"CH=${BASH_REMATCH[1]}\n"
+"[[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] Sending change_channel $CH\"\n"
+"\n"
+"MAX_TRIES=3\n"
+"SLEEP_BETWEEN=0.5\n"
+"RESPONSE_LINES=()\n"
+"\n"
+"for (( try=1; try<=MAX_TRIES; try++ )); do\n"
+"  [[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] change_channel attempt $try/$MAX_TRIES\"\n"
+"\n"
+"  mapfile -t RESPONSE_LINES < <(\n"
+"    {\n"
+"      printf 'change_channel %d\\n' \"$CH\"\n"
+"      sleep 2\n"
+"    } | nc -w3 \"$SERVER_IP\" $PORT\n"
+"  )\n"
+"\n"
+"  if (( ${#RESPONSE_LINES[@]} > 0 )); then\n"
+"    [[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] Received reply on attempt $try\"\n"
+"    break\n"
+"  fi\n"
+"\n"
+"  [[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] No reply yet; sleeping ${SLEEP_BETWEEN}s\"\n"
+"  sleep \"$SLEEP_BETWEEN\"\n"
+"done\n"
+"\n"
+"if (( ${#RESPONSE_LINES[@]} == 0 )); then\n"
+"  echo \"No reply from VTX on change_channel after $MAX_TRIES attempts\"\n"
+"  exit 1\n"
+"fi\n"
+"\n"
+"for line in \"${RESPONSE_LINES[@]}\"; do\n"
+"  echo \"$line\"\n"
+"done\n"
+"\n"
+"for line in \"${RESPONSE_LINES[@]}\"; do\n"
+"  if [[ \"$line\" == *Failed* ]]; then\n"
+"    [[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] Detected failure; aborting\"\n"
+"    exit 1\n"
+"  fi\n"
+"done\n"
+"\n"
+"[[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] Server change_channel succeeded → proceeding with local reconfigure\"\n"
+"\n"
+"RAW_NICS=$(awk -F= '/^WFB_NICS/ {gsub(/\\\"/, \"\", $2); print $2; exit}' /etc/default/wifibroadcast)\n"
+"[[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] Raw WFB_NICS string: '$RAW_NICS'\"\n"
+"read -ra NICS <<< \"$RAW_NICS\"\n"
+"[[ $VERBOSE -eq 1 ]] && printf \"[DEBUG] Parsed NICS: %s\\n\" \"${NICS[@]}\"\n"
+"\n"
+"FIRST_NIC=\"${NICS[0]}\"\n"
+"ORIG=$(iw dev \"$FIRST_NIC\" info 2>/dev/null | awk '/channel/ {print $2; exit}' || echo \"unknown\")\n"
+"[[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] Original local channel (on $FIRST_NIC): $ORIG\"\n"
+"\n"
+"RAW_BW_LINE=$(grep -E '^\\s*bandwidth' /etc/wifibroadcast.cfg || true)\n"
+"[[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] Raw bandwidth line: '$RAW_BW_LINE'\"\n"
+"BANDWIDTH=$(awk -F= '/^\\s*bandwidth/ {gsub(/[^0-9]/, \"\", $2); print $2; exit}' /etc/wifibroadcast.cfg || echo)\n"
+"[[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] Parsed BANDWIDTH='$BANDWIDTH'\"\n"
+"\n"
+"case \"$BANDWIDTH\" in\n"
+"  10) MODE=\"10MHz\" ;;\n"
+"  40) MODE=\"HT40+\" ;;\n"
+"  80) MODE=\"80MHz\" ;;\n"
+"  *)  MODE=\"\" ;;\n"
+"esac\n"
+"[[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] Will use channel mode: '$MODE'\"\n"
+"\n"
+"for nic in \"${NICS[@]}\"; do\n"
+"  if [[ -n \"$MODE\" ]]; then\n"
+"    [[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] iw dev $nic set channel $CH $MODE\"\n"
+"    iw dev \"$nic\" set channel \"$CH\" $MODE\n"
+"  else\n"
+"    [[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] iw dev $nic set channel $CH\"\n"
+"    iw dev \"$nic\" set channel \"$CH\"\n"
+"  fi\n"
+"done\n"
+"\n"
+"SUCCESS=0\n"
+"for i in {{1..10}}; do\n"
+"  [[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] Sending confirm_channel_change attempt $i\"\n"
+"  set +e\n"
+"  CONFIRM=$(printf 'confirm_channel_change\\n' | nc -w1 \"$SERVER_IP\" $PORT)\n"
+"  RC=$?\n"
+"  set -e\n"
+"\n"
+"  if [[ $RC -eq 0 && -n \"$CONFIRM\" ]]; then\n"
+"    echo \"$CONFIRM\"\n"
+"    SUCCESS=1\n"
+"    break\n"
+"  fi\n"
+"\n"
+"  sleep 0.25\n"
+"done\n"
+"\n"
+"if [[ $SUCCESS -eq 1 ]]; then\n"
+"  [[ $VERBOSE -eq 1 ]] && echo \"[DEBUG] Got confirmation. Persisting wifi_channel $CH into config\"\n"
+"  sed -i -E \"s|^\\s*wifi_channel\\s*=.*|wifi_channel = $CH|\" /etc/wifibroadcast.cfg\n"
+"else\n"
+"  echo \"No confirmation received. Reverting local NICs to $ORIG\"\n"
+"  for nic in \"${NICS[@]}\"; do\n"
+"    iw dev \"$nic\" set channel \"$ORIG\" $MODE\n"
+"  done\n"
+"fi\n"
+"\n"
+"exit 0\n";
 
 int main(int argc, char *argv[]) {
-    static struct option opts[] = {
-        {"verbose", no_argument,       0, 'v'},
-        {"help",    no_argument,       0, 'h'},
-        {0, 0, 0, 0}
-    };
-    int opt;
-    while ((opt = getopt_long(argc, argv, "vh", opts, NULL)) != -1) {
-        if (opt == 'v')
-            verbose = 1;
-        else if (opt == 'h') {
-            print_help(argv[0]);
-            return 0;
-        } else {
-            print_help(argv[0]);
-            return 1;
-        }
-    }
-    if (optind + 2 > argc) {
-        print_help(argv[0]);
+    char script_path[] = "/tmp/tmp_wfbcmdXXXXXX.sh";
+    int fd = mkstemps(script_path, 3);  // suffix = ".sh"
+
+    if (fd == -1) {
+        perror("mkstemps");
         return 1;
     }
 
-    const char *server_ip = argv[optind];
-    const char *command   = argv[optind+1];
-
-    //――――――――――――――――――――――――――――――
-    // Client-side intercept: map
-    //   "set air wfbng air_channel N"
-    // to
-    //   "change_channel N"
-    // so that negotiation + confirm logic applies.
-    //――――――――――――――――――――――――――――――
-    char translated_cmd[BUF_SIZE];
-    if (strncmp(command, "set air wfbng air_channel", 25) == 0) {
-        int new_ch;
-        if (sscanf(command,
-                   "set air wfbng air_channel %d",
-                   &new_ch) == 1) {
-            snprintf(translated_cmd,
-                     sizeof(translated_cmd),
-                     "change_channel %d",
-                     new_ch);
-            if (verbose)
-                printf("[DEBUG] Translated '%s' → '%s'\n",
-                       command, translated_cmd);
-            command = translated_cmd;
-        } else {
-            fprintf(stderr,
-                    "Invalid format for set air wfbng air_channel\n");
-            return 1;
-        }
+    FILE *fp = fdopen(fd, "w");
+    if (!fp) {
+        perror("fdopen");
+        close(fd);
+        unlink(script_path);
+        return 1;
     }
 
-    char response[BUF_SIZE];
+    fputs(bash_script, fp);
+    fclose(fp);
+    chmod(script_path, 0700);
 
-    // Handle change_channel specially (with confirmation & rollback)
-    if (strncmp(command, "change_channel", 14) == 0) {
-        int ch;
-        if (sscanf(command, "change_channel %d", &ch) == 1) {
-            // get original channel
-            int cnt;
-            char **nics = get_nics(&cnt);
-            char orig[16] = "unknown";
-            if (cnt > 0) {
-                char buf[128];
-                snprintf(buf, sizeof(buf),
-                         "iw dev %s info | grep channel | awk '{print $2}'",
-                         nics[0]);
-                FILE *p = popen(buf, "r");
-                if (p && fgets(orig, sizeof(orig), p))
-                    orig[strcspn(orig, "\r\n")] = 0;
-                if (p) pclose(p);
-            }
-            if (nics) {
-                for (int i = 0; i < cnt; i++)
-                    free(nics[i]);
-                free(nics);
-            }
-
-            // send change
-            int rc = send_command_get_response(server_ip,
-                                              command,
-                                              response,
-                                              sizeof(response));
-            /* If the TCP send/read failed entirely or we got no data, bail out */
-            if (rc != 0 || response[0] == '\0') {
-                fprintf(stderr, "No response from VTX\n");
-                return 1;
-            }
-            printf("%s\n", response);
-            sleep(2);
-
-            if (!strstr(response, "Failed")) {
-                 local_change_channel(ch);
-                 
-                 // ping test @ ~10 Hz
-                int ok = 0;
-                for (int i = 0; i < 10; i++) {
-                    char ping_cmd[80];
-                    // -c1: one packet, -W1: wait up to 1 s for reply,
-                    // -i0.2: send interval 200 ms (so on failure you timeout faster)
-                    snprintf(ping_cmd, sizeof(ping_cmd),
-                             "ping -c1 -W1 -i0.2 %s >/dev/null", server_ip);
-                    if (system(ping_cmd) == 0) {
-                        ok = 1;
-                        break;
-                    }
-                    usleep(100000);  // 100 ms pause → ~10 Hz
-                }
-                if (ok) {
-                    send_command_get_response(server_ip, "confirm_channel_change", response, sizeof(response));
-                    printf("%s\n", response);
-                    // make persistent after reboot
-                    save_new_channel_to_files(ch);
-                } else {
-                    printf("No contact; reverting to channel %s\n", orig);
-                    local_change_channel(atoi(orig));
-                }
-            }
-        } else {
-            fprintf(stderr, "Invalid change_channel format\n");
-        }
-    }
-    // Handle set_video_mode command
-    else if (strncmp(command, "set_video_mode", 14) == 0) {
-        char size[32], crop[128];
-        int fps, exposure;
-
-        // Expected format: set_video_mode <size> <fps> <exposure> '<crop>'
-        if (sscanf(command,
-                   "set_video_mode %31s %d %d '%127[^']'",
-                   size, &fps, &exposure, crop) == 4) {
-            // 1) send to server
-            if (send_command_get_response(server_ip, command, response, sizeof(response)) == 0) {
-                printf("%s\n", response);
-
-                // 2) only update if fps changed
-                int current = -1;
-                {
-                    FILE *pf = popen("sed -n 's/^\\s*fps *= *\\([0-9]\\+\\).*/\\1/p' /config/scripts/rec-fps", "r");
-                    if (pf) {
-                        fscanf(pf, "%d", &current);
-                        pclose(pf);
-                    }
-                }
-                if (current != fps) {
-                    // update fps value
-                    char cmd[256];
-                    snprintf(cmd, sizeof(cmd),
-                             "sed -i 's/^\\(fps *= *\\)[0-9]\\+/\\1%d/' /config/scripts/rec-fps", fps);
-                    if (system(cmd) != 0) {
-                        fprintf(stderr, "Could not update /config/scripts/rec-fps\n");
-                    }
-
-                    // 3) restart local services quietly, report successes
-                    int ret1 = system("sudo systemctl restart openipc --quiet >/dev/null 2>&1");
-                    int ret2 = system("sudo systemctl restart stream --quiet >/dev/null 2>&1");
-                    if (ret1 == 0 && ret2 == 0) {
-                        printf("Successfully updated VRX rec-fps by restarting openipc and stream services\n");
-                    } else if (ret1 == 0) {
-                        printf("Successfully updated VRX rec-fps by restarting openipc service\n");
-                    } else if (ret2 == 0) {
-                        printf("Successfully updated VRX rec-fps by restarting stream service\n");
-                    } else {
-                        fprintf(stderr, "Failed to update VRX rec-fps\n");
-                    }
-                } else {
-                    printf("FPS unchanged (%d); no VRX service(s) restarted\n", fps);
-                }
-            } else {
-                fprintf(stderr, "Failed to get response from VTX\n");
-            }
-        } else {
-            fprintf(stderr, "Invalid set_video_mode format\n");
-        }
+    size_t cmd_len = strlen(script_path) + 1;
+    for (int i = 1; i < argc; i++) {
+        cmd_len += strlen(argv[i]) + 3;
     }
 
-
-
-    // Handle new msposd commands
-    else if (strncmp(command, "stop_msposd", 11) == 0 ||
-             strncmp(command, "start_msposd", 12) == 0) {
-        if (send_command_get_response(server_ip, command, response, sizeof(response)) == 0)
-            printf("%s\n", response);
+    char *cmd = malloc(cmd_len);
+    if (!cmd) {
+        perror("malloc");
+        unlink(script_path);
+        return 1;
     }
+
+    strcpy(cmd, script_path);
+    for (int i = 1; i < argc; i++) {
+        strcat(cmd, " \"");
+        strcat(cmd, argv[i]);
+        strcat(cmd, "\"");
+    }
+
+    int ret = system(cmd);
+    unlink(script_path);
+    free(cmd);
 	
-	
-	 // ──────────────────────────────────────────────────────────────────────
-	 
-    else if (strncmp(command, "set_alink_power", 15) == 0) {
-        
-        if (send_command_get_response(server_ip, command, response, sizeof(response)) == 0) {
-            printf("%s\n", response);
-        } else {
-            fprintf(stderr, "Error sending set_alink_power command\n");
-            return 1;
-        }
-    }
-    // ──────────────────────────────────────────────────────────────────────
-	
-	
-    // All remaining commands
-    else {
-        if (send_command_get_response(server_ip, command, response, sizeof(response)) == 0)
-            printf("%s\n", response);
-    }
-
-    return 0;
+	printf("\n");  // Ensures shell prompt appears on a new line
+    return WEXITSTATUS(ret);
 }
