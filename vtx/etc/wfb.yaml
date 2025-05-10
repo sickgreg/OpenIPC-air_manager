@@ -17,6 +17,6 @@ broadcast:
 telemetry:
   router: msposd
   port_rx: 14550
-	port_tx: 14551
+  port_tx: 14551
   serial: ttyS2
   osd_fps: 20
