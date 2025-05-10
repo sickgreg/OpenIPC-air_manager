@@ -109,18 +109,22 @@ start_telemetry() {
 	echo_log "Starting $router"
 	load_wfb 144 16 "$port_rx" "$port_tx" 8002
 
-	if [ "$router" = "mavfwd" ]; then
+    telemetry_apps "$port_rx" "$port_tx"
+
+}
+
+telemetry_apps() {
+    echo_log "Starting telemetry apps"
+    if [ "$router" = "mavfwd" ]; then
 		mavfwd -b 115200 -c 8 -p 100 -a 15 -t -m /dev/"$serial" \
-			-o 127.0.0.1:"$port_tx" -i 127.0.0.1:"$port_rx" > /dev/null &
+			-o 127.0.0.1:"$2" -i 127.0.0.1:"$1" &
 	else
 		if [ "$router" = "msposd" ]; then
 			size=$(curl -s localhost/api/v1/config.json | jsonfilter -qe "@.video0.size")
 		fi
 		msposd -b 115200 -c 8 -r "$osd_fps" -m /dev/"$serial" \
-			-o 127.0.0.1:"$port_tx" -z "$size" > /dev/null &
+			-o 127.0.0.1:"$2" -z "$size" &
 	fi
-
-
 }
 
 start_air_man() {
@@ -197,7 +201,8 @@ restart() {
 		osd|telemetry|"")           # default to telemetry/osd
 			echo_log "Restarting telemetry (msposd/mavfwd)"
 			killall -q msposd mavfwd 2>/dev/null
-			start_telemetry
+			sleep 1
+			telemetry_apps 14550 14551
 			;;
                 air_man)
 			echo_log "Restarting air_man (air_man)"
