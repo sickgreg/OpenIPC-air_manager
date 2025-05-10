@@ -103,13 +103,10 @@ start_telemetry() {
 	chipset=$(ipcinfo -c)
 	[ "$chipset" = "ssc33x" ] && devmem 0x1F207890 16 0x8
 
-	port_rx=14550
-	port_tx=14551
-
 	echo_log "Starting $router"
 	load_wfb 144 16 "$port_rx" "$port_tx" 8002
 
-    telemetry_apps "$port_rx" "$port_tx"
+        telemetry_apps "$port_rx" "$port_tx"
 
 }
 
@@ -202,7 +199,7 @@ restart() {
 			echo_log "Restarting telemetry (msposd/mavfwd)"
 			killall -q msposd mavfwd 2>/dev/null
 			sleep 1
-			telemetry_apps 14550 14551
+			telemetry_apps "$port_rx" "$port_tx"
 			;;
                 air_man)
 			echo_log "Restarting air_man (air_man)"
