@@ -127,6 +127,9 @@ int verbose = 0;
 int current_channel = 0;
 char current_resolution[32] = "1280x720";
 int current_fps = 30;
+int current_bandwidth = 20;
+char bw_string[10] = "";
+
 
 // Structure to hold pending changes that require confirmation.
 // Only channel changes require confirmation now.
@@ -207,7 +210,13 @@ int cmd_restart_msposd(void) {
 // Helper to revert channel change on timeout
 void revert_channel_change(int orig_channel) {
     char syscmd[128];
-    snprintf(syscmd, sizeof(syscmd), "iw dev wlan0 set channel %d", orig_channel);
+	
+	strcpy(bw_string,
+       current_bandwidth == 10 ? "10MHz" :
+       current_bandwidth == 40 ? "HT40+" :
+       current_bandwidth == 80 ? "80MHz" : "");
+
+    snprintf(syscmd, sizeof(syscmd), "iw dev wlan0 set channel %d %s", orig_channel, bw_string);
     if (verbose) printf("[DEBUG] Reverting channel: %s\n", syscmd);
     system(syscmd);
     current_channel = orig_channel;
@@ -291,7 +300,15 @@ void process_command(const char *cmd, char *response, size_t resp_size) {
         int new_channel;
         if (sscanf(command, "change_channel %d", &new_channel) == 1) {
             char syscmd[128];
-            snprintf(syscmd, sizeof(syscmd), "iw dev wlan0 set channel %d", new_channel);
+
+			sleep(1);
+
+			strcpy(bw_string,
+				current_bandwidth == 10 ? "10MHz" :
+				current_bandwidth == 40 ? "HT40+" :
+				current_bandwidth == 80 ? "80MHz" : "");
+
+			snprintf(syscmd, sizeof(syscmd), "iw dev wlan0 set channel %d %s", new_channel, bw_string);
             if (verbose) printf("[DEBUG] %s\n", syscmd);
             if (system(syscmd) == 0) {
                 pthread_mutex_lock(&pending.lock);
@@ -299,9 +316,7 @@ void process_command(const char *cmd, char *response, size_t resp_size) {
                 pending.pending_channel = new_channel;
                 pending.pending_channel_flag = 1;
                 pending.pending_channel_time = time(NULL);
-                pthread_mutex_unlock(&pending.lock);
-                snprintf(response, resp_size,
-                         "Channel change executed. Awaiting ground station confirmation.");
+                pthread_mutex_unlock(&pending.lock);                
             } else {
                 snprintf(response, resp_size, "Failed to change channel.");
             }
@@ -421,24 +436,36 @@ void process_command(const char *cmd, char *response, size_t resp_size) {
 			}
 
 
-    } else {
-        char s[BUF_SIZE + 64];
-        snprintf(s, sizeof(s), "%s %s", script, command);
-        FILE *pipe = popen(s, "r");
-        if (pipe) {
-            char out[BUF_SIZE];
-            if (fgets(out, sizeof(out), pipe)) {
-                out[strcspn(out, "\r\n")] = 0;
-                strncpy(response, out, resp_size - 1);
-                response[resp_size - 1] = '\0';
-            } else {
-                response[0] = '\0';
-            }
-            pclose(pipe);
-        } else {
-            snprintf(response, resp_size, "Error executing air_man_cmd.sh script.");
-        }
-    }
+		} else {
+			char s[BUF_SIZE+128];
+			// redirect stderr into stdout so popen() sees syntax errors too
+			snprintf(s, sizeof(s), "%s %s 2>&1", script, command);
+			if (verbose) printf("[DEBUG] Running fallback: %s\n", s);
+
+			FILE *pipe = popen(s, "r");
+			if (pipe) {
+				char out[BUF_SIZE];
+				response[0] = '\0';
+
+				// grab first line of combined stdout+stderr
+				if (fgets(out, sizeof(out), pipe)) {
+					out[strcspn(out, "\r\n")] = 0;
+					strncpy(response, out, resp_size-1);
+					response[resp_size-1] = '\0';
+				}
+				// now check exit status
+				int status = pclose(pipe);
+				if (response[0]=='\0' && WIFEXITED(status) && WEXITSTATUS(status)!=0) {
+					snprintf(response, resp_size,
+							"Error: script exited with code %d",
+							WEXITSTATUS(status));
+				}
+			} else {
+				snprintf(response, resp_size,
+						"Error executing %s", script);
+			}
+		}
+
 }
 
 
@@ -446,15 +473,32 @@ void process_command(const char *cmd, char *response, size_t resp_size) {
 void *client_handler(void *arg) {
     int client_fd = *(int*)arg; free(arg);
     char buffer[BUF_SIZE];
-    int n = read(client_fd,buffer,sizeof(buffer)-1);
-    if (n>0) {
-        buffer[n]='\0'; char response[BUF_SIZE];
-        if (verbose) printf("[DEBUG] Received: %s\n",buffer);
-        process_command(buffer,response,sizeof(response));
-        if (verbose) printf("[DEBUG] Responding: %s\n",response);
-        write(client_fd,response,strlen(response));
+    int n = read(client_fd, buffer, sizeof(buffer)-1);
+    if (n <= 0) {
+        close(client_fd);
+        pthread_exit(NULL);
     }
-    close(client_fd); pthread_exit(NULL);
+    buffer[n] = '\0';
+    if (verbose) printf("[DEBUG] Received: %s\n", buffer);
+
+    // 1) If it's a change_channel command, immediately ACK
+    if (strncmp(buffer, "change_channel", 14) == 0) {
+        const char *ack = 
+            "Channel change command received. "
+            "Attempting change and wait for confirmation.\n";
+        write(client_fd, ack, strlen(ack));
+    }
+
+    // 2) Now do the full processing (this will block/sleep, etc.)
+    char response[BUF_SIZE] = {0};
+    process_command(buffer, response, sizeof(response));
+    if (verbose) printf("[DEBUG] Responding: %s\n", response);
+
+    // 3) Send the final result
+    write(client_fd, response, strlen(response));
+
+    close(client_fd);
+    pthread_exit(NULL);
 }
 
 int main(int argc,char *argv[]) {
@@ -468,7 +512,9 @@ int main(int argc,char *argv[]) {
     if (verbose) fprintf(stderr,"[DEBUG] Starting server in verbose mode.\n");
     char *val = read_yaml_value("/etc/wfb.yaml",".wireless.channel");
     current_channel = val?atoi(val):165; if(val)free(val);
-
+	char *val2 = read_yaml_value("/etc/wfb.yaml",".wireless.width");
+	current_bandwidth = atoi(val2);
+	
     init_pending_changes();
     pthread_t tid; pthread_create(&tid,NULL,confirmation_checker,NULL); pthread_detach(tid);
 
