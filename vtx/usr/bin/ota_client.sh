@@ -25,4 +25,4 @@ local_url="http://10.5.0.1:81/$fw_file"
 
 # ── Confirm and run upgrade ───────────────────────────
 echo "Starting sysupgrade from: $local_url"
-sysupgrade -k -r -n -f --url="$local_url"
+sysupgrade -k -r -n --url="$local_url"
