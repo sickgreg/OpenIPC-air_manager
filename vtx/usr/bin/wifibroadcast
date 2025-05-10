@@ -112,16 +112,23 @@ start_telemetry() {
 
 telemetry_apps() {
     echo_log "Starting telemetry apps"
+
+    # Override IP if using tunnel
+    ip_out="127.0.0.1"
+    if [ "$downlink" = "tunnel" ]; then
+        ip_out="10.5.0.1"
+    fi
+
     if [ "$router" = "mavfwd" ]; then
-		mavfwd -b 115200 -c 8 -p 100 -a 15 -t -m /dev/"$serial" \
-			-o 127.0.0.1:"$2" -i 127.0.0.1:"$1" >/dev/null &
-	else
-		if [ "$router" = "msposd" ]; then
-			size=$(curl -s localhost/api/v1/config.json | jsonfilter -qe "@.video0.size")
-		fi
-		msposd -b 115200 -c 8 -r "$osd_fps" -m /dev/"$serial" \
-			-o 127.0.0.1:"$2" -z "$size" >/dev/null &
-	fi
+        mavfwd -b 115200 -c 8 -p 100 -a 15 -t -m /dev/"$serial" \
+            -o "$ip_out":"$2" -i "$ip_out":"$1" >/dev/null &
+    else
+        if [ "$router" = "msposd" ]; then
+            size=$(curl -s localhost/api/v1/config.json | jsonfilter -qe "@.video0.size")
+        fi
+        msposd -b 115200 -c 8 -r "$osd_fps" -m /dev/"$serial" \
+            -o "$ip_out":"$2" -z "$size" >/dev/null &
+    fi
 }
 
 start_air_man() {
