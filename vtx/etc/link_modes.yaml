@@ -1,179 +1,315 @@
 link_modes:
-  overhead_presets: [15, 20, 30]
-
+  overhead_presets: [15,20,30,40,50]
   modes:
     mcs0_10mhz_lgi:
       mcs: 0
       bandwidth_mhz: 10
       guard_interval: long
       raw_rate_mbps: 3.25
-      net_rate_mbps: {15: 2.8, 20: 2.6, 30: 2.3}
+      net_rate_mbps:
+        15: 2.8
+        20: 2.6
+        30: 2.3
+        40: 1.9
+        50: 1.6
       mtu_recommendation: 1200
-
     mcs0_10mhz_sgi:
       mcs: 0
       bandwidth_mhz: 10
       guard_interval: short
       raw_rate_mbps: 3.6
-      net_rate_mbps: {15: 3.1, 20: 2.9, 30: 2.5}
+      net_rate_mbps:
+        15: 3.1
+        20: 2.9
+        30: 2.5
+        40: 2.2
+        50: 1.8
       mtu_recommendation: 1200
-
     mcs1_10mhz_lgi:
       mcs: 1
       bandwidth_mhz: 10
       guard_interval: long
       raw_rate_mbps: 6.5
-      net_rate_mbps: {15: 5.5, 20: 5.2, 30: 4.6}
+      net_rate_mbps:
+        15: 5.5
+        20: 5.2
+        30: 4.5
+        40: 3.9
+        50: 3.2
       mtu_recommendation: 1200
-
     mcs1_10mhz_sgi:
       mcs: 1
       bandwidth_mhz: 10
       guard_interval: short
       raw_rate_mbps: 7.2
-      net_rate_mbps: {15: 6.1, 20: 5.8, 30: 5.0}
+      net_rate_mbps:
+        15: 6.1
+        20: 5.8
+        30: 5.0
+        40: 4.3
+        50: 3.6
       mtu_recommendation: 1200
-
     mcs2_10mhz_lgi:
       mcs: 2
       bandwidth_mhz: 10
       guard_interval: long
       raw_rate_mbps: 9.75
-      net_rate_mbps: {15: 8.3, 20: 7.8, 30: 6.8}
+      net_rate_mbps:
+        15: 8.3
+        20: 7.8
+        30: 6.8
+        40: 5.8
+        50: 4.9
       mtu_recommendation: 1200
-
     mcs2_10mhz_sgi:
       mcs: 2
       bandwidth_mhz: 10
       guard_interval: short
       raw_rate_mbps: 10.9
-      net_rate_mbps: {15: 9.3, 20: 8.7, 30: 7.6}
+      net_rate_mbps:
+        15: 9.3
+        20: 8.7
+        30: 7.6
+        40: 6.5
+        50: 5.5
       mtu_recommendation: 1200
-
     mcs3_10mhz_lgi:
       mcs: 3
       bandwidth_mhz: 10
       guard_interval: long
       raw_rate_mbps: 13.0
-      net_rate_mbps: {15: 11.0, 20: 10.4, 30: 9.1}
+      net_rate_mbps:
+        15: 11.0
+        20: 10.4
+        30: 9.1
+        40: 7.8
+        50: 6.5
       mtu_recommendation: 1200
-
     mcs3_10mhz_sgi:
       mcs: 3
       bandwidth_mhz: 10
       guard_interval: short
       raw_rate_mbps: 14.4
-      net_rate_mbps: {15: 12.2, 20: 11.5, 30: 10.1}
+      net_rate_mbps:
+        15: 12.2
+        20: 11.5
+        30: 10.1
+        40: 8.6
+        50: 7.2
       mtu_recommendation: 1200
-
     mcs0_20mhz_lgi:
       mcs: 0
       bandwidth_mhz: 20
       guard_interval: long
       raw_rate_mbps: 6.5
-      net_rate_mbps: {15: 5.5, 20: 5.2, 30: 4.6}
+      net_rate_mbps:
+        15: 5.5
+        20: 5.2
+        30: 4.5
+        40: 3.9
+        50: 3.2
       mtu_recommendation: 1200
-
     mcs0_20mhz_sgi:
       mcs: 0
       bandwidth_mhz: 20
       guard_interval: short
       raw_rate_mbps: 7.2
-      net_rate_mbps: {15: 6.1, 20: 5.8, 30: 5.0}
+      net_rate_mbps:
+        15: 6.1
+        20: 5.8
+        30: 5.0
+        40: 4.3
+        50: 3.6
       mtu_recommendation: 1200
-
     mcs1_20mhz_lgi:
       mcs: 1
       bandwidth_mhz: 20
       guard_interval: long
       raw_rate_mbps: 13.0
-      net_rate_mbps: {15: 11.0, 20: 10.4, 30: 9.1}
+      net_rate_mbps:
+        15: 11.0
+        20: 10.4
+        30: 9.1
+        40: 7.8
+        50: 6.5
       mtu_recommendation: 1200
-
     mcs1_20mhz_sgi:
       mcs: 1
       bandwidth_mhz: 20
       guard_interval: short
       raw_rate_mbps: 14.4
-      net_rate_mbps: {15: 12.2, 20: 11.5, 30: 10.1}
+      net_rate_mbps:
+        15: 12.2
+        20: 11.5
+        30: 10.1
+        40: 8.6
+        50: 7.2
       mtu_recommendation: 1200
-
     mcs2_20mhz_lgi:
       mcs: 2
       bandwidth_mhz: 20
       guard_interval: long
       raw_rate_mbps: 19.5
-      net_rate_mbps: {15: 16.6, 20: 15.6, 30: 13.7}
+      net_rate_mbps:
+        15: 16.6
+        20: 15.6
+        30: 13.6
+        40: 11.7
+        50: 9.8
       mtu_recommendation: 2400
-
     mcs2_20mhz_sgi:
       mcs: 2
       bandwidth_mhz: 20
       guard_interval: short
       raw_rate_mbps: 21.7
-      net_rate_mbps: {15: 18.4, 20: 17.4, 30: 15.2}
+      net_rate_mbps:
+        15: 18.4
+        20: 17.4
+        30: 15.2
+        40: 13.0
+        50: 10.8
       mtu_recommendation: 2400
-
     mcs3_20mhz_lgi:
       mcs: 3
       bandwidth_mhz: 20
       guard_interval: long
       raw_rate_mbps: 26.0
-      net_rate_mbps: {15: 22.1, 20: 20.8, 30: 18.2}
+      net_rate_mbps:
+        15: 22.1
+        20: 20.8
+        30: 18.2
+        40: 15.6
+        50: 13.0
       mtu_recommendation: 2400
-
     mcs4_20mhz_sgi:
       mcs: 4
       bandwidth_mhz: 20
       guard_interval: short
       raw_rate_mbps: 43.3
-      net_rate_mbps: {15: 36.8, 20: 34.6, 30: 30.3}
+      net_rate_mbps:
+        15: 36.8
+        20: 34.6
+        30: 30.3
+        40: 26.0
+        50: 21.6
       mtu_recommendation: 3600
-
     mcs5_20mhz_sgi:
       mcs: 5
       bandwidth_mhz: 20
       guard_interval: short
       raw_rate_mbps: 57.8
-      net_rate_mbps: {15: 49.1, 20: 46.2, 30: 40.5}
+      net_rate_mbps:
+        15: 49.1
+        20: 46.2
+        30: 40.5
+        40: 34.7
+        50: 28.9
       mtu_recommendation: 3600
-
+    mcs6_20mhz_sgi:
+      mcs: 6
+      bandwidth_mhz: 20
+      guard_interval: short
+      raw_rate_mbps: 65.0
+      net_rate_mbps:
+        15: 55.2
+        20: 52.0
+        30: 45.5
+        40: 39.0
+        50: 32.5
+      mtu_recommendation: 3600
+    mcs7_20mhz_sgi:
+      mcs: 7
+      bandwidth_mhz: 20
+      guard_interval: short
+      raw_rate_mbps: 72.2
+      net_rate_mbps:
+        15: 61.4
+        20: 57.8
+        30: 50.5
+        40: 43.3
+        50: 36.1
+      mtu_recommendation: 3600
     mcs1_40mhz_lgi:
       mcs: 1
       bandwidth_mhz: 40
       guard_interval: long
       raw_rate_mbps: 27.0
-      net_rate_mbps: {15: 22.9, 20: 21.6, 30: 18.9}
+      net_rate_mbps:
+        15: 22.9
+        20: 21.6
+        30: 18.9
+        40: 16.2
+        50: 13.5
       mtu_recommendation: 2400
-
     mcs2_40mhz_lgi:
       mcs: 2
       bandwidth_mhz: 40
       guard_interval: long
       raw_rate_mbps: 40.5
-      net_rate_mbps: {15: 34.4, 20: 32.4, 30: 28.4}
+      net_rate_mbps:
+        15: 34.4
+        20: 32.4
+        30: 28.3
+        40: 24.3
+        50: 20.2
       mtu_recommendation: 3600
-
     mcs3_40mhz_lgi:
       mcs: 3
       bandwidth_mhz: 40
       guard_interval: long
       raw_rate_mbps: 54.0
-      net_rate_mbps: {15: 45.9, 20: 43.2, 30: 37.8}
+      net_rate_mbps:
+        15: 45.9
+        20: 43.2
+        30: 37.8
+        40: 32.4
+        50: 27.0
       mtu_recommendation: 3600
-
     mcs4_40mhz_sgi:
       mcs: 4
       bandwidth_mhz: 40
       guard_interval: short
       raw_rate_mbps: 90.0
-      net_rate_mbps: {15: 76.5, 20: 72.0, 30: 63.0}
+      net_rate_mbps:
+        15: 76.5
+        20: 72.0
+        30: 63.0
+        40: 54.0
+        50: 45.0
       mtu_recommendation: 3600
-
     mcs5_40mhz_sgi:
       mcs: 5
       bandwidth_mhz: 40
       guard_interval: short
       raw_rate_mbps: 120.0
-      net_rate_mbps: {15: 102.0, 20: 96.0, 30: 84.0}
+      net_rate_mbps:
+        15: 102.0
+        20: 96.0
+        30: 84.0
+        40: 72.0
+        50: 60.0
+      mtu_recommendation: 3600
+    mcs6_40mhz_sgi:
+      mcs: 6
+      bandwidth_mhz: 40
+      guard_interval: short
+      raw_rate_mbps: 135.0
+      net_rate_mbps:
+        15: 114.8
+        20: 108.0
+        30: 94.5
+        40: 81.0
+        50: 67.5
+      mtu_recommendation: 3600
+    mcs7_40mhz_sgi:
+      mcs: 7
+      bandwidth_mhz: 40
+      guard_interval: short
+      raw_rate_mbps: 150.0
+      net_rate_mbps:
+        15: 127.5
+        20: 120.0
+        30: 105.0
+        40: 90.0
+        50: 75.0
       mtu_recommendation: 3600
