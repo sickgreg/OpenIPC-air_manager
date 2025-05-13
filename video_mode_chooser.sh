@@ -59,12 +59,12 @@ selected_command="${mode_commands[$index]}"
 
 executable="air_man_gs"
 
-echo "Executing: $executable $camera_ip \"$selected_command\""
+echo "Executing: $executable -v $camera_ip \"$selected_command\""
 
 if [ -x "/usr/local/bin/$executable" ]; then
-    /usr/local/bin/$executable "$camera_ip" "$selected_command"
+    /usr/local/bin/$executable -v "$camera_ip" "$selected_command"
 elif [ -x "./$executable" ]; then
-    ./$executable "$camera_ip" "$selected_command"
+    ./$executable -v "$camera_ip" "$selected_command"
 else
     echo "Executable '$executable' not found in /usr/local/bin or current directory."
     exit 1
