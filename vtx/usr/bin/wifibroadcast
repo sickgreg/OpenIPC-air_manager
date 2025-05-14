@@ -59,7 +59,9 @@ load_modules() {
 }
 
 load_mlink() {
-	ifconfig "$wfb_dev" mtu "$mlink"
+	mtu_value=$mlink
+	[ "$mlink" -lt 1444 ] && mtu_value=1443
+	ifconfig "$wfb_dev" mtu "$mtu_value"
 
 	nalu=$((mlink - 100))
 	if [ "$(cli -g .outgoing.naluSize)" != "$nalu" ]; then
