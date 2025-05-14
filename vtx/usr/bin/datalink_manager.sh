@@ -162,7 +162,7 @@ EOF
 	ifconfig "$wfb_dev" mtu "$mtu_value"
   
   # ── 5) Set mlink in /etc/wfb.yaml ───────────────────────────────────────
- 	cli -s .outgoing.naluSize $($mlink - 100)
+ 	cli -s .outgoing.naluSize $((mlink - 100))
    
 }
 
