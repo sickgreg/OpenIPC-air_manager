@@ -26,7 +26,7 @@ bw_group()  { printf "%smhz" "$1"; }
 
 raw_rate()  { yaml_num "$LINKMODES_CFG" ".link_modes.modes.$1.raw_rate_mbps"; }
 net30() { r=$(raw_rate "$1"); [ -z "$r" ] && echo 0 || printf "scale=4; $r*0.70\n" | bc -l; }
-mtu()  { yaml_num "$LINKMODES_CFG" ".link_modes.modes.$1.mtu_recommendation"; }
+mtu()  { yaml_num "$LINKMODES_CFG" ".link_modes.modes.$1.mlink"; }
 
 dbg() { [ "$VERBOSE" -eq 1 ] && echo "DEBUG: $*"; }
 
