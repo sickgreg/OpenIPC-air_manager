@@ -13,8 +13,6 @@ link_modes:
         40: 1.9
         50: 1.6
       mlink: 1200
-      fec_k: 8
-      fec_n: 12
     mcs0_10mhz_sgi:
       mcs: 0
       bandwidth_mhz: 10
@@ -27,8 +25,6 @@ link_modes:
         40: 2.2
         50: 1.8
       mlink: 1200
-      fec_k: 8
-      fec_n: 12
     mcs1_10mhz_lgi:
       mcs: 1
       bandwidth_mhz: 10
@@ -41,8 +37,6 @@ link_modes:
         40: 3.9
         50: 3.2
       mlink: 1200
-      fec_k: 8
-      fec_n: 12
     mcs1_10mhz_sgi:
       mcs: 1
       bandwidth_mhz: 10
@@ -55,8 +49,6 @@ link_modes:
         40: 4.3
         50: 3.6
       mlink: 1200
-      fec_k: 8
-      fec_n: 12
     mcs2_10mhz_lgi:
       mcs: 2
       bandwidth_mhz: 10
@@ -69,8 +61,6 @@ link_modes:
         40: 5.8
         50: 4.9
       mlink: 1200
-      fec_k: 8
-      fec_n: 12
     mcs2_10mhz_sgi:
       mcs: 2
       bandwidth_mhz: 10
@@ -83,8 +73,6 @@ link_modes:
         40: 6.5
         50: 5.5
       mlink: 1200
-      fec_k: 8
-      fec_n: 12
     mcs3_10mhz_lgi:
       mcs: 3
       bandwidth_mhz: 10
@@ -97,8 +85,6 @@ link_modes:
         40: 7.8
         50: 6.5
       mlink: 1200
-      fec_k: 8
-      fec_n: 12
     mcs3_10mhz_sgi:
       mcs: 3
       bandwidth_mhz: 10
@@ -111,8 +97,6 @@ link_modes:
         40: 8.6
         50: 7.2
       mlink: 1200
-      fec_k: 8
-      fec_n: 12
     mcs0_20mhz_lgi:
       mcs: 0
       bandwidth_mhz: 20
@@ -125,8 +109,6 @@ link_modes:
         40: 3.9
         50: 3.2
       mlink: 1200
-      fec_k: 8
-      fec_n: 12
     mcs0_20mhz_sgi:
       mcs: 0
       bandwidth_mhz: 20
@@ -139,8 +121,6 @@ link_modes:
         40: 4.3
         50: 3.6
       mlink: 1200
-      fec_k: 8
-      fec_n: 12
     mcs1_20mhz_lgi:
       mcs: 1
       bandwidth_mhz: 20
@@ -153,8 +133,6 @@ link_modes:
         40: 7.8
         50: 6.5
       mlink: 1200
-      fec_k: 8
-      fec_n: 12
     mcs1_20mhz_sgi:
       mcs: 1
       bandwidth_mhz: 20
@@ -167,8 +145,6 @@ link_modes:
         40: 8.6
         50: 7.2
       mlink: 1200
-      fec_k: 8
-      fec_n: 12
     mcs2_20mhz_lgi:
       mcs: 2
       bandwidth_mhz: 20
@@ -181,8 +157,6 @@ link_modes:
         40: 11.7
         50: 9.8
       mlink: 2400
-      fec_k: 8
-      fec_n: 12
     mcs2_20mhz_sgi:
       mcs: 2
       bandwidth_mhz: 20
@@ -195,8 +169,6 @@ link_modes:
         40: 13.0
         50: 10.8
       mlink: 2400
-      fec_k: 8
-      fec_n: 12
     mcs3_20mhz_lgi:
       mcs: 3
       bandwidth_mhz: 20
@@ -209,8 +181,6 @@ link_modes:
         40: 15.6
         50: 13.0
       mlink: 2400
-      fec_k: 8
-      fec_n: 12
     mcs4_20mhz_sgi:
       mcs: 4
       bandwidth_mhz: 20
@@ -223,8 +193,6 @@ link_modes:
         40: 26.0
         50: 21.6
       mlink: 3600
-      fec_k: 8
-      fec_n: 12
     mcs5_20mhz_sgi:
       mcs: 5
       bandwidth_mhz: 20
@@ -237,8 +205,6 @@ link_modes:
         40: 34.7
         50: 28.9
       mlink: 3600
-      fec_k: 8
-      fec_n: 12
     mcs6_20mhz_sgi:
       mcs: 6
       bandwidth_mhz: 20
@@ -251,8 +217,6 @@ link_modes:
         40: 39.0
         50: 32.5
       mlink: 3600
-      fec_k: 8
-      fec_n: 12
     mcs7_20mhz_sgi:
       mcs: 7
       bandwidth_mhz: 20
@@ -265,8 +229,6 @@ link_modes:
         40: 43.3
         50: 36.1
       mlink: 3600
-      fec_k: 8
-      fec_n: 12
     mcs1_40mhz_lgi:
       mcs: 1
       bandwidth_mhz: 40
@@ -279,8 +241,6 @@ link_modes:
         40: 16.2
         50: 13.5
       mlink: 2400
-      fec_k: 8
-      fec_n: 12
     mcs2_40mhz_lgi:
       mcs: 2
       bandwidth_mhz: 40
@@ -293,8 +253,6 @@ link_modes:
         40: 24.3
         50: 20.2
       mlink: 3600
-      fec_k: 8
-      fec_n: 12
     mcs3_40mhz_lgi:
       mcs: 3
       bandwidth_mhz: 40
@@ -307,8 +265,6 @@ link_modes:
         40: 32.4
         50: 27.0
       mlink: 3600
-      fec_k: 8
-      fec_n: 12
     mcs4_40mhz_sgi:
       mcs: 4
       bandwidth_mhz: 40
@@ -321,8 +277,6 @@ link_modes:
         40: 54.0
         50: 45.0
       mlink: 3600
-      fec_k: 8
-      fec_n: 12
     mcs5_40mhz_sgi:
       mcs: 5
       bandwidth_mhz: 40
@@ -335,8 +289,6 @@ link_modes:
         40: 72.0
         50: 60.0
       mlink: 3600
-      fec_k: 8
-      fec_n: 12
     mcs6_40mhz_sgi:
       mcs: 6
       bandwidth_mhz: 40
@@ -349,8 +301,6 @@ link_modes:
         40: 81.0
         50: 67.5
       mlink: 3600
-      fec_k: 8
-      fec_n: 12
     mcs7_40mhz_sgi:
       mcs: 7
       bandwidth_mhz: 40
@@ -363,5 +313,3 @@ link_modes:
         40: 90.0
         50: 75.0
       mlink: 3600
-      fec_k: 8
-      fec_n: 12
