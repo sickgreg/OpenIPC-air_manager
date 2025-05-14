@@ -6,7 +6,6 @@ LINKMODES_CFG="/etc/link_modes.yaml"
 WFB_CFG="/etc/wfb.yaml"
 MAJESTIC_CFG="/etc/majestic.yaml"
 VERBOSE=0
-wfb_dev=wlan0
 
 ###############################################################################
 # YAML helpers (always use -g for query)
@@ -156,14 +155,6 @@ EOF
     && echo "Updated wfb.yaml mcs_index → $mcs"
   yaml-cli -i "$WFB_CFG" -s .wireless.gi "$gi_full" >/dev/null \
     && echo "Updated wfb.yaml guard interval → $gi_full"
-
-	mtu_value=$mlink
-	[ "$mlink" -lt 1444 ] && mtu_value=1443
-	ifconfig "$wfb_dev" mtu "$mtu_value"
-  
-  # ── 5) Set mlink in /etc/wfb.yaml ───────────────────────────────────────
- 	cli -s .outgoing.naluSize $((mlink - 100))
-   
 }
 
 ###############################################################################
