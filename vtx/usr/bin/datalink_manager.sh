@@ -123,6 +123,11 @@ EOF
   yaml-cli -i "$WFB_CFG" -s .wireless.width "$bandwidth" >/dev/null \
     && echo "Updated wfb.yaml width → $bandwidth MHz"
 
+  yaml-cli -i "$WFB_CFG" -s .broadcast.fec_k 8 >/dev/null \
+    && echo "Updated wfb.yaml fec_k → 8"
+  yaml-cli -i "$WFB_CFG" -s .broadcast.fec_n 12 >/dev/null \
+    && echo "Updated wfb.yaml fec_n → 12"
+
   # ── 2) Re-set channel width with iw dev (assumes interface wlan0) ──────────
   channel=$(iw dev wlan0 info 2>/dev/null | awk '/channel/ {print $2}' | head -n1)
   if [ -n "$channel" ]; then
@@ -142,7 +147,7 @@ EOF
       -S "$stbc" \
       -L "$ldpc" \
       -M "$mcs"
-
+  wfb_tx_cmd 8000 set_fec -k 8 -n 12
   echo "Radio configured via wfb_tx_cmd."
 
   # ── 4) Update gi,mcs in /etc/wfb.yaml ───────────────────────────────────────
@@ -204,8 +209,11 @@ get_auto() {
   need_kbps="$1"; shift
   [ "$1" = "--verbose" ] && { VERBOSE=1; shift; }
 
-  fec_n=$(yaml_num "$WFB_CFG" ".broadcast.fec_n"); [ -z "$fec_n" ] && fec_n=1
-  fec_k=$(yaml_num "$WFB_CFG" ".broadcast.fec_k"); [ -z "$fec_k" ] && fec_k=1
+  #fec_n=$(yaml_num "$WFB_CFG" ".broadcast.fec_n"); [ -z "$fec_n" ] && fec_n=12
+  #fec_k=$(yaml_num "$WFB_CFG" ".broadcast.fec_k"); [ -z "$fec_k" ] && fec_k=8
+  #Assume a 50% FEC ratio overhead when selecting a auto mode.
+  fec_n=12
+  fec_k=8
   width=$(yaml_num "$WFB_CFG" ".wireless.width");  [ -z "$width" ] && width=20
   group=$(bw_group "$width")
   adapter=$(yaml_str "$WFB_CFG" ".wireless.wlan_adapter")
