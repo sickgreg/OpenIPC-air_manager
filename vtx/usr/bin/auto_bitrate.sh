@@ -17,8 +17,8 @@ echo "Selected mode: $MODE_KEY"
 
 # 1.5) Set temprorary low bitrate to avoid glitching
 # 3) Update the encoder / video bitrate live
-#curl -s "http://localhost/api/v1/set?video0.bitrate=3000" >/dev/null
-#sleep 0.5
+curl -s "http://localhost/api/v1/set?video0.bitrate=3000" >/dev/null
+sleep 0.5
 
 # 2) Apply the link mode
 datalink_manager.sh --set "$MODE_KEY" || {
@@ -27,14 +27,10 @@ datalink_manager.sh --set "$MODE_KEY" || {
 }
 
 # 3) Update the encoder / video bitrate live
-#curl -s "http://localhost/api/v1/set?video0.bitrate=${BITRATE}" >/dev/null \
-#  && echo "Video bitrate set to ${BITRATE} kbps"
+curl -s "http://localhost/api/v1/set?video0.bitrate=${BITRATE}" >/dev/null \
+  && echo "Video bitrate set to ${BITRATE} kbps"
 
 # 4) Set bitrate permanently
 yaml-cli -i /etc/majestic.yaml -s .video0.bitrate ${BITRATE}
-
-/etc/init.d/S95majestic restart
-wifibroadcast stop;wifibroadcast stop;sleep 1;wifibroadcast start
-
 
 echo "Done."
