@@ -6,6 +6,7 @@ LINKMODES_CFG="/etc/link_modes.yaml"
 WFB_CFG="/etc/wfb.yaml"
 MAJESTIC_CFG="/etc/majestic.yaml"
 VERBOSE=0
+wfb_dev=wlan0
 
 ###############################################################################
 # YAML helpers (always use -g for query)
