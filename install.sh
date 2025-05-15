@@ -61,7 +61,6 @@ ssh-keyscan -H "$IP" 2>/dev/null >> /root/.ssh/known_hosts || true
 echo "chmod +x on relevant files ..."
 chmod -R +x vtx/usr/bin/* vtx/bin/*
 chmod -R +x vrx/usr/local/bin/*
-chmod +x air_man_cmd.sh video_mode_chooser.sh
 
 # ── Stop target services ──────────────────────────────────────────────────────
 echo "Stopping running services on $IP ..."
@@ -74,7 +73,6 @@ echo "Starting scp ..."
 sshpass -e scp $SSH_OPTS -v -r -p vtx/usr/*      root@"$IP":/usr/     2>&1 | grep -v debug1 || true
 sshpass -e scp $SSH_OPTS -v -r -p vtx/bin/*      root@"$IP":/bin/     2>&1 | grep -v debug1 || true
 sshpass -e scp $SSH_OPTS -v -r -p vtx/etc/*      root@"$IP":/etc/     2>&1 | grep -v debug1 || true
-sshpass -e scp $SSH_OPTS -v    -p air_man_cmd.sh root@"$IP":/usr/bin/ 2>&1 | grep -v debug1 || true
 
 # ── Optional channel configuration ────────────────────────────────────────────
 if [[ -n "$CHANNEL" ]]; then
@@ -90,8 +88,6 @@ sshpass -e ssh $SSH_OPTS -t root@"$IP" 'reboot' 2>&1 | grep -v debug1 || true
 # ── Local side: copy VRX files ────────────────────────────────────────────────
 echo "Copying VRX files locally..."
 cp -f vrx/usr/local/bin/*  /usr/local/bin/
-cp -f video_mode_chooser.sh /usr/local/bin/
-cp -f video_modes_imx*      /etc/
 
 # ── Countdown before reconnect ────────────────────────────────────────────────
 echo "Reconnecting in 25 s..."
