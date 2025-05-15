@@ -1,8 +1,8 @@
 /*
- * server.c - alink_manager: TCP server for drone
+ * server.c - air_manager: TCP server for drone
  *
  * Compile with:
- *     gcc -pthread -o alink_manager server.c
+ *     gcc -pthread -o air_manager server.c
  *
  * This server listens on port 12355. On startup, it:
  *   - Reads configuration from /etc/wfb.yaml
@@ -34,7 +34,9 @@
 #include <arpa/inet.h>
 #include <time.h>
 #include <getopt.h>
-#include <sys/un.h> 
+#include <sys/un.h>
+#include <stdbool.h>
+
 
 #define PORT 12355
 #define BUF_SIZE 1024
@@ -131,6 +133,16 @@ int current_bandwidth = 20;
 char bw_string[10] = "";
 
 
+typedef struct {
+    char name[64];
+    char command[256];
+} VideoMode;
+
+#define MAX_MODES 84
+VideoMode video_modes[MAX_MODES];
+int video_mode_count = 0;
+
+
 // Structure to hold pending changes that require confirmation.
 // Only channel changes require confirmation now.
 typedef struct {
@@ -144,11 +156,79 @@ typedef struct {
 
 pending_changes_t pending;
 
+
 // Initialize pending changes structure
 void init_pending_changes() {
     pending.pending_channel_flag = 0;
     pthread_mutex_init(&pending.lock, NULL);
 }
+
+void load_video_modes(const char *fn) {
+    if (access(fn, R_OK) != 0) {
+        fprintf(stderr, "[WARN] Cannot read %s\n", fn);
+        return;
+    }
+    FILE *f = fopen(fn, "r");
+    if (!f) { perror("fopen"); return; }
+
+    bool in_modes = false;
+    char buf[512];
+    video_mode_count = 0;
+
+    while (fgets(buf, sizeof(buf), f)) {
+        // strip newline
+        buf[strcspn(buf, "\r\n")] = 0;
+
+        // detect section header
+        if (!in_modes) {
+            if (strncasecmp(buf, "[modes]", 7) == 0) {
+                in_modes = true;
+                if (verbose) printf("[DBG] entered %s\n", buf);
+            }
+            continue;
+        }
+        // exit on new section
+        if (buf[0] == '[') break;
+        // skip blank/comments
+        char *p = buf;
+        while (*p==' '||*p=='\t') p++;
+        if (!*p || *p=='#' || *p==';') continue;
+
+        // extract "name"
+        char *q1 = strchr(p, '"');
+        char *q2 = q1 ? strchr(q1+1, '"') : NULL;
+        if (!q1||!q2) continue;
+        size_t nl = q2 - (q1+1);
+        if (nl >= sizeof(video_modes[0].name)) nl = sizeof(video_modes[0].name)-1;
+
+        // extract "command"
+        char *r1 = strchr(q2+1, '"');
+        char *r2 = r1 ? strchr(r1+1, '"') : NULL;
+        if (!r1||!r2) continue;
+        size_t cl = r2 - (r1+1);
+        if (cl >= sizeof(video_modes[0].command)) cl = sizeof(video_modes[0].command)-1;
+
+        if (video_mode_count < MAX_MODES) {
+            strncpy(video_modes[video_mode_count].name,  q1+1, nl);
+            video_modes[video_mode_count].name[nl] = 0;
+            strncpy(video_modes[video_mode_count].command, r1+1, cl);
+            video_modes[video_mode_count].command[cl] = 0;
+            if (verbose) 
+                printf("[DBG] %d: \"%s\" → \"%s\"\n",
+                       video_mode_count,
+                       video_modes[video_mode_count].name,
+                       video_modes[video_mode_count].command);
+            video_mode_count++;
+        }
+    }
+
+    fclose(f);
+    if (video_mode_count)
+        printf("[INFO] Loaded %d modes from %s\n", video_mode_count, fn);
+    else
+        fprintf(stderr, "[WARN] No modes loaded from %s\n", fn);
+}
+
 
 // Generic function to run yaml-cli and get output as a string
 char* read_yaml_value(const char* yaml_file, const char* yaml_path) {
@@ -344,72 +424,135 @@ void process_command(const char *cmd, char *response, size_t resp_size) {
         }
 
     } else if (strncmp(command, "set_video_mode", 14) == 0) {
-        char size[32], crop[128];
-        int new_fps, new_exp;
-        if (sscanf(command, "set_video_mode %31s %d %d '%127[^']'", 
-                   size, &new_fps, &new_exp, crop) == 4) {
-            /* Save original settings */
-            char old_size[32] = "", old_fps[16] = "", old_exp[16] = "";
-            FILE *p;
-            p = popen("cli -g .video0.size", "r");
-            if (p && fgets(old_size, sizeof(old_size), p))
-                old_size[strcspn(old_size, "\r\n")] = 0;
-            if (p) pclose(p);
-            p = popen("cli -g .video0.fps", "r");
-            if (p && fgets(old_fps, sizeof(old_fps), p))
-                old_fps[strcspn(old_fps, "\r\n")] = 0;
-            if (p) pclose(p);
-            p = popen("cli -g .isp.exposure", "r");
-            if (p && fgets(old_exp, sizeof(old_exp), p))
-                old_exp[strcspn(old_exp, "\r\n")] = 0;
-            if (p) pclose(p);
+		const char *args = command + 15;  // everything after "set_video_mode "
+		snprintf(response, resp_size, "%s", args);
 
-            /* Set new settings */
-            char cmdline[256];
-            snprintf(cmdline, sizeof(cmdline), "cli -s .video0.size %s", size);
-            system(cmdline);
-            snprintf(cmdline, sizeof(cmdline), "cli -s .video0.fps %d", new_fps);
-            system(cmdline);
-            snprintf(cmdline, sizeof(cmdline), "cli -s .isp.exposure %d", new_exp);
-            system(cmdline);
+		char size[32], crop[128];
+		int new_fps, new_exp;
 
-            /* Prepare reply early */
-            snprintf(response, resp_size,
-                     "Video mode set. Original was size=%s fps=%s exp=%s.",
-                     old_size[0] ? old_size : "?",
-                     old_fps[0] ? old_fps : "?",
-                     old_exp[0] ? old_exp : "?");
+		if (sscanf(args, "%31s %d %d '%127[^']'", size, &new_fps, &new_exp, crop) == 4 ||
+			sscanf(args, "%31s %d %d \"%127[^\"]\"", size, &new_fps, &new_exp, crop) == 4) {
+        
+			// Apply new settings
+			char cmdline[256];
+			snprintf(cmdline, sizeof(cmdline), "cli -s .video0.size %s", size);
+			system(cmdline);
+			snprintf(cmdline, sizeof(cmdline), "cli -s .video0.fps %d", new_fps);
+			system(cmdline);
+			snprintf(cmdline, sizeof(cmdline), "cli -s .isp.exposure %d", new_exp);
+			system(cmdline);
 
-            /* Fork child to restart services in background */
-            if (fork() == 0) {
-                system("killall -HUP majestic");
+			// Fork for background restart + crop
+			if (fork() == 0) {
+				system("killall -HUP majestic");
 
-                size_t len = strlen(crop);
-                if (len >= 2 && ((crop[0] == '\'' && crop[len-1] == '\'') ||
-                                 (crop[0] == '"' && crop[len-1] == '"'))) {
-                    crop[len-1] = '\0';
-                    memmove(crop, crop + 1, len - 1);
-                }
-                if (strcmp(crop, "nocrop") != 0) {
-                    sleep(3);
-                    char c2[256];
-                    snprintf(c2, sizeof(c2),
-                             "echo setprecrop %s > /proc/mi_modules/mi_vpe/mi_vpe0", crop);
-                    system(c2);
-                }
-                update_precrop_rc_local_simple(crop);
+				if (strcmp(crop, "nocrop") != 0) {
+					sleep(3);
+					char c2[256];
+					snprintf(c2, sizeof(c2),
+							"echo setprecrop %s > /proc/mi_modules/mi_vpe/mi_vpe0", crop);
+					system(c2);
+				}
 
-                cmd_restart_msposd();
-                sleep(1);
-                cmd_restart_alink();
-                _exit(0);
-            }
-        } else {
+				update_precrop_rc_local_simple(crop);
+				cmd_restart_msposd();
+				sleep(1);
+				cmd_restart_alink();
+				_exit(0);
+			}
+		}
+	
+		else {
             snprintf(response, resp_size,
                      "Invalid set_video_mode command. Format: set_video_mode <size> <fps> <exposure> '<crop>'");
+				}
+
+		} else if (strncmp(command, "get_all_video_modes", 19) == 0) {
+		if (video_mode_count == 0) {
+			snprintf(response, resp_size, "No video modes loaded.");
+		} else {
+			response[0] = '\0';
+			for (int i = 0; i < video_mode_count; ++i) {
+				strncat(response, video_modes[i].name, resp_size - strlen(response) - 2);
+				strncat(response, "\n", resp_size - strlen(response) - 2);
+			}
+		}
+		
+		} else if (strncmp(command, "set_simple_video_mode", 21) == 0) {
+    // 1) Extract the quoted mode name
+    char *arg = command + 21;
+    while (*arg == ' ' || *arg == '\t') arg++;
+    // strip surrounding quotes if present
+    char *start = arg;
+    char *end   = start + strlen(start) - 1;
+    if (( *start == '\'' && *end == '\'') || ( *start == '"' && *end == '"' )) {
+        *end = '\0';
+        start++;
+    }
+    char mode_name[128];
+    strncpy(mode_name, start, sizeof(mode_name)-1);
+    mode_name[sizeof(mode_name)-1] = '\0';
+
+    // 2) Find the matching entry in our loaded table
+    int idx = -1;
+    for (int i = 0; i < video_mode_count; i++) {
+        if (strcmp(mode_name, video_modes[i].name) == 0) {
+            idx = i;
+            break;
+        }
+    }
+
+    if (idx >= 0) {
+        // 3) Build the full set_video_mode command
+        char full_cmd[512];
+        snprintf(full_cmd, sizeof(full_cmd),
+                 
+				 "set_video_mode %s", video_modes[idx].command);
+
+        // 4) Call existing logic to apply it and fill `response`
+        process_command(full_cmd, response, resp_size);
+
+        // 5) Persist the simple‐mode name
+        FILE *f = fopen("/etc/sensors/mode_current", "w");
+        if (f) {
+            fprintf(f, "%s\n", mode_name);
+            fclose(f);
+        } else {
+            // optional warning, but do not override `response`
+            if (verbose) fprintf(stderr,
+                "[WARN] failed to write current mode file\n");
         }
 
-	    } else if (strncmp(command, "set_alink_power", 15) == 0) {
+    } else {
+        // not found in our table
+        snprintf(response, resp_size,
+                 "Mode not found: %s", mode_name);
+    }
+
+
+
+	    }
+		else if (strcmp(command, "get_current_video_mode") == 0) {
+		FILE *f = fopen("/etc/sensors/mode_current", "r");
+		if (f) {
+			if (fgets(response, resp_size, f)) {
+				// Strip trailing newline if present
+				size_t len = strlen(response);
+				if (len > 0 && response[len - 1] == '\n') {
+					response[len - 1] = '\0';
+				}
+			} else {
+				snprintf(response, resp_size, "No current video mode set");
+			}
+			fclose(f);
+		} else {
+			snprintf(response, resp_size, "Current mode file not found");
+		}
+		}
+
+
+
+		else if (strncmp(command, "set_alink_power", 15) == 0) {
 			int lvl;
 			if (sscanf(command, "set_alink_power %d", &lvl) == 1) {
 				char resp[BUF_SIZE];
@@ -510,6 +653,27 @@ int main(int argc,char *argv[]) {
         else if (opt=='-'&&strncmp(optarg,"script=",7)==0) script=optarg+7;
     }
     if (verbose) fprintf(stderr,"[DEBUG] Starting server in verbose mode.\n");
+	
+	char detected_sensor[32] = {0};
+
+	FILE *fp = popen("ipcinfo -s", "r");
+	if (fp && fgets(detected_sensor, sizeof(detected_sensor), fp)) {
+		detected_sensor[strcspn(detected_sensor, "\r\n")] = 0; // strip newline
+		if (verbose) printf("[INFO] Detected sensor: %s\n", detected_sensor);
+	}
+	if (fp) pclose(fp);
+
+	const char *video_mode_file = NULL;
+	if (strcmp(detected_sensor, "imx335") == 0) {
+		video_mode_file = "/etc/sensors/modes_imx335.ini";
+	} else if (strcmp(detected_sensor, "imx415") == 0) {
+		video_mode_file = "/etc/sensors/modes_imx415.ini";
+	} else {
+		fprintf(stderr, "Unknown sensor: %s\n", detected_sensor);
+	}
+
+	load_video_modes(video_mode_file);
+	
     char *val = read_yaml_value("/etc/wfb.yaml",".wireless.channel");
     current_channel = val?atoi(val):165; if(val)free(val);
 	char *val2 = read_yaml_value("/etc/wfb.yaml",".wireless.width");

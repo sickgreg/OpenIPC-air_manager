@@ -63,13 +63,11 @@ fi
 ##############################
 # === set_video_mode ===
 ##############################
-if [[ $CMD =~ ^set_video_mode[[:space:]]+[^[:space:]]+[[:space:]]+([0-9]+) ]]; then
-  NEW_FPS="${BASH_REMATCH[1]}"
-  [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] set_video_mode detected, FPS = $NEW_FPS"
-
+if [[ $CMD =~ ^(set_video_mode|set_simple_video_mode) ]]; then
   MAX=3
   for i in $(seq 1 $MAX); do
     [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] set_video_mode attempt $i/$MAX"
+    
     set +e
     RESPONSE=$(printf '%s\n' "$CMD" | nc -w2 "$SERVER_IP" $PORT)
     STAT=$?
@@ -78,22 +76,30 @@ if [[ $CMD =~ ^set_video_mode[[:space:]]+[^[:space:]]+[[:space:]]+([0-9]+) ]]; t
     if [[ $STAT -eq 0 && -n "$RESPONSE" && "$RESPONSE" != *Failed* ]]; then
       echo "$RESPONSE"
 
-      REC_FPS_FILE="/config/scripts/rec-fps"
-      [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] Reading existing FPS from $REC_FPS_FILE"
+      # Extract FPS from RESPONSE (2nd field)
+      if [[ $RESPONSE =~ ^[^[:space:]]+[[:space:]]+([0-9]+) ]]; then
+        NEW_FPS="${BASH_REMATCH[1]}"
+        [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] Extracted FPS from response: $NEW_FPS"
 
-	  CURRENT_FPS=$(grep -E '^\s*fps\s*=' "$REC_FPS_FILE" | cut -d '=' -f2 | tr -dc '0-9')
-      [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] Previous FPS: '$CURRENT_FPS'"
+        REC_FPS_FILE="/config/scripts/rec-fps"
+        [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] Reading existing FPS from $REC_FPS_FILE"
 
-      if [[ "$CURRENT_FPS" != "$NEW_FPS" ]]; then
-        [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] FPS changed to $NEW_FPS: updating file and restarting openipc"
+        CURRENT_FPS=$(grep -E '^\s*fps\s*=' "$REC_FPS_FILE" | cut -d '=' -f2 | tr -dc '0-9')
+        [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] Previous FPS: '$CURRENT_FPS'"
 
-        sed -i -E "s/^(\s*fps\s*=\s*)[0-9]+/\1$NEW_FPS/" "$REC_FPS_FILE"
-        systemctl restart openipc
+        if [[ "$CURRENT_FPS" != "$NEW_FPS" ]]; then
+          [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] FPS changed to $NEW_FPS: updating file and restarting openipc"
+
+          sed -i -E "s/^(\s*fps\s*=\s*)[0-9]+/\1$NEW_FPS/" "$REC_FPS_FILE"
+          systemctl restart openipc
+        else
+          [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] FPS unchanged: no update or restart needed"
+        fi
+        exit 0
       else
-        [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] FPS unchanged: no update or restart needed"
+        [[ $VERBOSE -eq 1 ]] && echo "[ERROR] Failed to parse FPS from response"
+        exit 1
       fi
-
-      exit 0
     fi
     sleep 0.5
   done
@@ -101,6 +107,7 @@ if [[ $CMD =~ ^set_video_mode[[:space:]]+[^[:space:]]+[[:space:]]+([0-9]+) ]]; t
   echo "Failed to set video mode after $MAX attempts"
   exit 1
 fi
+
 
 
 ##########################
@@ -243,3 +250,4 @@ done
 
 echo "No response from VTX after $MAX attempts"
 exit 1
+
