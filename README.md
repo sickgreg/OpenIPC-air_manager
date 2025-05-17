@@ -4,6 +4,18 @@
 
 
 
+## 📁 Installation (sbc v2.0.0 required for rec-fps updating)
+
+
+Power up VTX (drone), ssh to VRX (gs) connected to Internet and run the following
+```
+git clone https://github.com/sickgreg/OpenIPC-air_manager
+cd OpenIPC-air_manager
+chmod +x install.sh
+./install.sh 10.5.0.10
+```
+Files will be copied to VRX and VTX
+
 
 ## 📁 New Video Mode Files Location - On VTX (Drone)
 
