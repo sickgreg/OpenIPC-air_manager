@@ -46,4 +46,4 @@ if [ -z "$SELECTED" ]; then
 fi
 
 echo "Setting mode: $SELECTED"
-air_man_gs "$DRONE_IP" "set_simple_video_mode '$SELECTED'"
+air_man_gs -v "$DRONE_IP" "set_simple_video_mode '$SELECTED'"
