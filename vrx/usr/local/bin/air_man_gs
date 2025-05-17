@@ -9,6 +9,10 @@ fi
 
 PORT=12355
 VERBOSE=0
+REC_FPS_FILE="/config/setup.txt"
+#REC_FPS_FILE="/config/scripts/rec-fps.ini"
+
+
 
 print_help() {
   cat <<EOF
@@ -28,9 +32,15 @@ Commands (use quotes for multiple words):
   confirm_channel_change
   "set_alink_power <0–10>"
   "set_video_mode <size> <fps> <exposure> '<crop>'"
+  get_all_video_modes
+  get_current_video_mode
+  "set_simple_video_mode <full video mode name>"
   restart_wfb
   restart_msposd
   (and any air_man_cmd.sh commands)
+  
+  Example: $0 10.5.0.10 "change_channel 104"
+  
 EOF
 }
 
@@ -81,33 +91,64 @@ if [[ $CMD =~ ^(set_video_mode|set_simple_video_mode) ]]; then
         NEW_FPS="${BASH_REMATCH[1]}"
         [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] Extracted FPS from response: $NEW_FPS"
 
-        REC_FPS_FILE="/config/scripts/rec-fps"
-        [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] Reading existing FPS from $REC_FPS_FILE"
+        [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] Config file: $REC_FPS_FILE"
 
-        CURRENT_FPS=$(grep -E '^\s*fps\s*=' "$REC_FPS_FILE" | cut -d '=' -f2 | tr -dc '0-9')
-        [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] Previous FPS: '$CURRENT_FPS'"
+        # 1) locate the [dvr recording] section start
+        SECTION_LINE=$(grep -n '^\[dvr recording\]' "$REC_FPS_FILE" | cut -d: -f1)
+        if [[ -z "$SECTION_LINE" ]]; then
+          echo "ERROR: [dvr recording] section not found in $REC_FPS_FILE"
+          exit 1
+        fi
 
+        # 2) find where that section ends (start of next section or EOF)
+        NEXT_SEC_OFFSET=$(tail -n +$((SECTION_LINE+1)) "$REC_FPS_FILE" \
+                         | grep -n '^\[' | head -n1 | cut -d: -f1)
+        if [[ -n "$NEXT_SEC_OFFSET" ]]; then
+          END_LINE=$(( SECTION_LINE + NEXT_SEC_OFFSET - 1 ))
+        else
+          END_LINE=$(wc -l < "$REC_FPS_FILE")
+        fi
+
+        # 3) within that block, find rec_fps line
+        REL_LINE=$(sed -n "${SECTION_LINE},${END_LINE}p" "$REC_FPS_FILE" \
+                   | grep -n '^\s*rec_fps' | cut -d: -f1)
+        if [[ -z "$REL_LINE" ]]; then
+          # not found → insert at end of section
+          [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] rec_fps not found; adding at line $END_LINE"
+          sed -i "${END_LINE}i rec_fps = $NEW_FPS" "$REC_FPS_FILE"
+          systemctl restart openipc
+          exit 0
+        fi
+
+        # 4) compute absolute line and current value
+        ABS_LINE=$(( SECTION_LINE + REL_LINE - 1 ))
+        CURRENT_FPS=$(sed -n "${ABS_LINE}p" "$REC_FPS_FILE" \
+                      | cut -d= -f2 | tr -d '[:space:]')
+        [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] Previous rec_fps: $CURRENT_FPS"
+
+        # 5) compare & update if needed
         if [[ "$CURRENT_FPS" != "$NEW_FPS" ]]; then
-          [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] FPS changed to $NEW_FPS: updating file and restarting openipc"
-
-          sed -i -E "s/^(\s*fps\s*=\s*)[0-9]+/\1$NEW_FPS/" "$REC_FPS_FILE"
+          [[ $VERBOSE -eq 1 ]] && \
+            echo "[DEBUG] FPS changed → updating from $CURRENT_FPS to $NEW_FPS"
+          sed -i "${ABS_LINE}s/rec_fps *= *.*/rec_fps = $NEW_FPS/" "$REC_FPS_FILE"
           systemctl restart openipc
         else
-          [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] FPS unchanged: no update or restart needed"
+          [[ $VERBOSE -eq 1 ]] && echo "[DEBUG] FPS unchanged → no action"
         fi
+
         exit 0
       else
-        [[ $VERBOSE -eq 1 ]] && echo "[ERROR] Failed to parse FPS from response"
+        [[ $VERBOSE -eq 1 ]] && echo "[ERROR] Could not parse FPS from response"
         exit 1
       fi
     fi
+
     sleep 0.5
   done
 
   echo "Failed to set video mode after $MAX attempts"
   exit 1
 fi
-
 
 
 ##########################
