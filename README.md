@@ -7,7 +7,7 @@
 ## 📁 Installation (sbc v2.0.0 required for rec-fps updating)
 
 
-Power up VTX (drone), ssh to VRX (gs) connected to Internet and run the following
+OTA (Over The Air). Power up VTX (drone) and VRX (gs).  Connect VRX (gs) to Internet. ssh to VRX (gs) and paste the following
 ```
 git clone https://github.com/sickgreg/OpenIPC-air_manager
 cd OpenIPC-air_manager
