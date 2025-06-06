@@ -4,7 +4,7 @@
 
 
 
-## 📁 Installation (sbc v2.0.0 required for rec-fps updating)
+## 📁 Pre-release Installation (sbc v2.0.0 required for rec-fps updating)
 
 
 OTA (Over The Air). Power up VTX (drone) and VRX (gs).  Connect VRX (gs) to Internet. ssh to VRX (gs) and paste the following
