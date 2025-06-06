@@ -9,13 +9,22 @@
 
 OTA (Over The Air). Power up VTX (drone) and VRX (gs).  Connect VRX (gs) to Internet. ssh to VRX (gs) and paste the following
 ```
+#Run on VRX (gs) connected to Internet
 git clone https://github.com/sickgreg/OpenIPC-air_manager
 cd OpenIPC-air_manager
 chmod +x install.sh
 ./install.sh 10.5.0.10
 ```
-Files will be copied to VRX and VTX
 
+Set your wlan_adapter in `/etc/wfb.yaml`, enable alink, set S and L
+```
+# Currently defined adapters are [bl-r8812af1,bl-m8812eu2,bl-m8731bu4,default]
+
+  wlan_adapter: bl-m8812eu2
+  link_control: alink
+  stbc: 1
+  ldpc: 1
+```
 
 ## 📁 New Video Mode Files Location - On VTX (Drone)
 
