@@ -4,7 +4,7 @@
 
 
 
-## 📁 Pre-release Installation (sbc v2.0.0 required for rec-fps updating)
+## 📁 Pre-release Installation (sbc v2.0.0b required for gs rec-fps updating - but not critical)
 
 
 OTA (Over The Air). Power up VTX (drone) and VRX (gs).  Connect VRX (gs) to Internet. ssh to VRX (gs) and paste the following
@@ -16,12 +16,11 @@ chmod +x install.sh
 ./install.sh 10.5.0.10
 ```
 
-Set your wlan_adapter in `/etc/wfb.yaml`, enable alink, set S and L
+Double check your wlan_adapter and S and L in `/etc/wfb.yaml` (still testing auto-setting @ wfb startup)
 ```
-# Currently defined adapters are [bl-r8812af1,bl-m8812eu2,bl-m8731bu4,default]
-
+# Note: currently defined adapters are [bl-r8812af1,bl-m8812eu2,bl-m8731bu4,default]
+# Use default if flying MarioAIO/Ultrasite/PocketFPV.  Need a way to know which au we detect!
   wlan_adapter: bl-m8812eu2
-  link_control: alink
   stbc: 1
   ldpc: 1
 ```
