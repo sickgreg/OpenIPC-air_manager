@@ -88,6 +88,10 @@ sshpass -e ssh $SSH_OPTS -t root@"$IP" 'reboot' 2>&1 | grep -v debug1 || true
 # ── Local side: copy VRX files ────────────────────────────────────────────────
 echo "Copying VRX files locally..."
 cp -f vrx/usr/local/bin/*  /usr/local/bin/
+curl -L -o alink_install.sh https://raw.githubusercontent.com/OpenIPC/adaptive-link/refs/heads/main/alink_install.sh
+chmod +x alink_install.sh
+./alink_install.sh gs remove
+./alink_install.sh gs install
 
 # ── Countdown before reconnect ────────────────────────────────────────────────
 echo "Reconnecting in 25 s..."
