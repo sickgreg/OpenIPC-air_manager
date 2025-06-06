@@ -136,7 +136,16 @@ profiles:
       mcs0: [50]
       mcs1: [50]
       mcs2: [50]
+      mcs3: [50]
+      mcs4: [50]
+      mcs5: [50]
+      mcs6: [50]
+      mcs7: [50]
     pwr_mw:
       0: 1mW
+      1: 1mW
+      2: 1mW
+      3: 1mW
+      4: 1mW
     link_modes:
       20mhz: [mcs0_20mhz_lgi, mcs1_20mhz_lgi, mcs2_20mhz_lgi, mcs3_20mhz_lgi, mcs4_20mhz_sgi, mcs5_20mhz_sgi]
