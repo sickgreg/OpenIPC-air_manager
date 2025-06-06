@@ -7,13 +7,14 @@
 ## 📁 Pre-release Installation (sbc v2.0.0b required for gs rec-fps updating - but not critical)
 
 Consider `sysupgrade -k -r -n` first...
+
 OTA (Over The Air). Power up VTX (drone) and VRX (gs).  Connect VRX (gs) to Internet. ssh to VRX (gs) and paste the following
 ```
 #Run on VRX (gs) connected to Internet - With VTX (drone) powered on
 git clone https://github.com/sickgreg/OpenIPC-air_manager
 cd OpenIPC-air_manager
 chmod +x install.sh
-./install.sh 10.5.0.10
+./install.sh 10.5.0.10 # or IP address over Ethernet
 ```
 
 Double check your wlan_adapter and S and L in `/etc/wfb.yaml` (still testing auto-setting @ wfb startup)
@@ -24,21 +25,6 @@ Double check your wlan_adapter and S and L in `/etc/wfb.yaml` (still testing aut
   stbc: 1
   ldpc: 1
 ```
-
-## 📁 New Video Mode Files Location - On VTX (Drone)
-
-Video modes are defined in sensor-specific `.ini` files:
-
-* **IMX335**: `/etc/sensors/modes_imx335.ini`
-* **IMX415**: `/etc/sensors/modes_imx415.ini`
-
-
-```ini
-[MODES]
-; 16:9
-"16:9 720p 30" = "1280x720 30 33 'nocrop'"
-```
-## 🧾 New TCP Commands
 
 ### 1. `get_all_video_modes`
 
@@ -58,8 +44,25 @@ air_man_gs 10.5.0.10 "get_all_video_modes"
 4:3 720p 60 50HzAC
 ```
 
----
 
+Video modes are defined in sensor-specific `.ini` files:
+
+* **IMX335**: `/etc/sensors/modes_imx335.ini`
+* **IMX415**: `/etc/sensors/modes_imx415.ini`
+
+
+```ini
+[MODES]
+; 16:9
+"16:9 720p 30" = "1280x720 30 33 'nocrop'"
+```
+
+---
+## `choose_mode.sh`
+A VRX (ground station side) demonstrative CLI tool to read video_modes from .ini on drone, select and apply.
+```
+choose_mode.sh 10.5.0.10
+  ```
 ### 2. `set_simple_video_mode '<name>'`
 
 **Description:** Applies a named video mode from the `.ini` file.
@@ -113,6 +116,47 @@ air_man_gs 10.5.0.10 "get_current_video_mode"
 
 ---
 
+- **Channel Change with Negotiation**
+  ```bash
+  `./air_man_gs 10.5.0.10 "set air wfbng air_channel 165"`
+
+  # or
+  
+  ./air_man_gs 10.5.0.10 "change_channel 165"
+  ```
+  - Negotiates channel change on both VTX and VRX.
+  - Reverts if the link is lost.
+  - Channel persistence on both.
+
+- **Manual Video Mode Configuration (custom resolutions/settings)**
+  ```bash
+  # Without crop
+  ./air_man_gs 10.5.0.10 "set_video_mode 1920x1080 60 10 'nocrop'"
+
+  # With crop
+  ./air_man_gs 10.5.0.10 "set_video_mode 1920x1440 60 10 '0 0 376 0 2248 1688'"
+  ```
+  - Sets resolution, FPS, exposure, and crop in one command.
+  - Settings, including crop, persist across reboots.
+
+
+
+#### Example commands that will be forwarded:
+
+```bash
+# Query contrast
+./air_man_gs 10.5.0.10 "get air camera contrast"
+
+# Set WFBNG power
+./air_man_gs 10.5.0.10 "set air wfbng power 30"
+
+# List available values
+./air_man_gs 10.5.0.10 "values air camera size"
+```  
+
+## Custom Commands
+- Add `get`, `set`, or `values` functions in `air_man_cmd.sh`.
+- Use `air_man_gs` to invoke these custom commands from the ground station.
 
 ## Components
 
@@ -136,68 +180,6 @@ air_man_gs 10.5.0.10 "get_current_video_mode"
 - Sends commands to `air_man` on the VTX and prints the response.
 - Works for both built-in and custom commands.
 
-#### Special Commands, built in:
-- **Channel Change with Negotiation**
-  ```bash
-  `./air_man_gs 10.5.0.10 "set air wfbng air_channel 165"`
-
-  # or
-  
-  ./air_man_gs 10.5.0.10 "change_channel 165"
-  ```
-  - Negotiates channel change on both VTX and VRX.
-  - Reverts if the link is lost.
-  - Channel persistence on both.
-
-- **Video Mode Configuration**
-  ```bash
-  # Without crop
-  ./air_man_gs 10.5.0.10 "set_video_mode 1920x1080 60 10 'nocrop'"
-
-  # With crop
-  ./air_man_gs 10.5.0.10 "set_video_mode 1920x1440 60 10 '0 0 376 0 2248 1688'"
-  ```
-  - Sets resolution, FPS, exposure, and crop in one command.
-  - Settings, including crop, persist across reboots.
-
-## Video Modes Files
-- `/etc/sensors/modes_imx335.ini`
-- `/etc/sensors/modes_imx415.ini`
-
-These files contain predefined video modes for respective camera sensors.
-
-## `choose_mode.sh`
-A demonstrative CLI tool to read video_modes from .ini on drone, select and apply.
-
-### Usage:
-```bash
-./video_mode_chooser.sh 10.5.0.10 video_modes_imx415.ini
-```
-- Displays a numbered list of modes.
-- Applies the selected mode using `air_man_gs`, which also restarts majestic.
-- Automatically runs several other command to recalibrate OSD and refresh alink:
-  ```bash
-  ./air_man_gs "$camera_ip" restart_msposd
-  ./air_man_gs "$camera_ip" stop_alink
-  ./air_man_gs "$camera_ip" start_alink
-  ```
-
-#### Example commands that will be forwarded:
-
-```bash
-# Query contrast
-./air_man_gs 10.5.0.10 "get air camera contrast"
-
-# Set WFBNG power
-./air_man_gs 10.5.0.10 "set air wfbng power 30"
-
-# List available values
-./air_man_gs 10.5.0.10 "values air camera size"
-```  
-
-## Custom Commands
-- Add `get`, `set`, or `values` functions in `air_man_cmd.sh`.
-- Use `air_man_gs` to invoke these custom commands from the ground station.
 
 ---
 
