@@ -153,7 +153,8 @@ start_alink() {
 
 video_settings() {
 	sensor=$(ipcinfo -s)
-	cli -s .isp.sensorConfig /etc/sensors/"$sensor"_fpv.bin
+	suffix=$([ "$sensor" = "imx415" ] && echo "greg_fpvXVII" || echo "fpv")
+	cli -s .isp.sensorConfig /etc/sensors/"${sensor}_${suffix}.bin"
 	cli -s .isp.exposure 16
 	cli -s .video0.fps 60
 	cli -s .video0.bitrate 8192
