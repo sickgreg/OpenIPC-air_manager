@@ -2,6 +2,7 @@
 wfb_key=/etc/drone.key
 wfb_cfg=/etc/wfb.yaml
 wfb_dev=wlan0
+driver=""
 
 echo_log() {
 	echo "$1" | logger -s -t wifibroadcast
@@ -161,7 +162,7 @@ video_settings() {
 	cli -s .outgoing.enabled true
 	cli -s .outgoing.wfb true
 	cli -s .fpv.enabled true
-	cli -s .fpv.noiseLevel 1
+	cli -s .fpv.noiseLevel 0
         if [ "$sensor" = "imx335" ]; then
     	    cli -s .video0.size 1440x1080
         else
@@ -169,9 +170,39 @@ video_settings() {
         fi
 }
 
+wfb_yaml_set() {
+    yaml-cli -i "$wfb_cfg" -s "$@"
+}
+
+set_wfb_yaml_by_driver() {	#future load these from wlan_adapters.yaml
+    case "$driver" in
+        88XXau)
+            wfb_yaml_set .wireless.wlan_adapter bl-r8812af1
+            wfb_yaml_set .broadcast.stbc 1
+            wfb_yaml_set .broadcast.ldpc 1
+            ;;
+        8812eu)
+            wfb_yaml_set .wireless.wlan_adapter bl-m8812eu2
+            wfb_yaml_set .broadcast.stbc 1
+            wfb_yaml_set .broadcast.ldpc 1
+            ;;
+        8733bu)
+            wfb_yaml_set .wireless.wlan_adapter bl-m8731bu4
+            wfb_yaml_set .broadcast.stbc 0
+            wfb_yaml_set .broadcast.ldpc 0
+            ;;
+        *)
+            wfb_yaml_set .wireless.wlan_adapter default
+            wfb_yaml_set .broadcast.stbc 0
+            wfb_yaml_set .broadcast.ldpc 0
+            ;;
+    esac
+}
+
 start() {
 	load_config
 	load_modules
+	set_wfb_yaml_by_driver
 	load_mlink
 	load_interface
 
