@@ -3,13 +3,6 @@
 # Provision / update script with safe host-key reset
 # + optional --set-channel <N>
 #
-# Fixes applied:
-#   • Added `|| true` after every “... | grep -v debug1” pipeline so
-#     grep’s exit-status 1 (no match) no longer stops the script.
-#   • The yaml-cli command now runs **without** the grep filter, so its
-#     own exit status is respected and there is no unwanted abort.
-#   • killall commands already ignore “process not found” via `|| true`.
-#
 
 set -euo pipefail
 
@@ -46,6 +39,19 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# ── [MOD] Auto-detect channel if not provided ────────────────────────────────
+if [[ -z "$CHANNEL" ]]; then
+    if [[ -f /etc/wifibroadcast.cfg ]]; then
+        CHANNEL=$(grep -i 'wifi_channel' /etc/wifibroadcast.cfg | head -n1 | sed -E 's/.*wifi_channel\s*=\s*"?([^"]+)"?.*/\1/')
+        if [[ -z "$CHANNEL" ]]; then
+            echo "Could not extract wifi_channel from /etc/wifibroadcast.cfg"; exit 1
+        fi
+        echo "Detected local wifi_channel: $CHANNEL"
+    else
+        echo "/etc/wifibroadcast.cfg not found and no --set-channel provided"; exit 1
+    fi
+fi
+
 # ── Common vars ───────────────────────────────────────────────────────────────
 export SSHPASS='12345'
 SSH_OPTS="-o StrictHostKeyChecking=no"
@@ -74,7 +80,7 @@ sshpass -e scp $SSH_OPTS -v -r -p vtx/usr/*      root@"$IP":/usr/     2>&1 | gre
 sshpass -e scp $SSH_OPTS -v -r -p vtx/bin/*      root@"$IP":/bin/     2>&1 | grep -v debug1 || true
 sshpass -e scp $SSH_OPTS -v -r -p vtx/etc/*      root@"$IP":/etc/     2>&1 | grep -v debug1 || true
 
-# ── Optional channel configuration ────────────────────────────────────────────
+# ── Channel configuration ─────────────────────────────────────────────────────
 if [[ -n "$CHANNEL" ]]; then
     echo "Setting wireless channel to $CHANNEL ..."
     sshpass -e ssh $SSH_OPTS root@"$IP" \
@@ -82,7 +88,7 @@ if [[ -n "$CHANNEL" ]]; then
 fi
 
 # ── Reboot target ─────────────────────────────────────────────────────────────
-echo "SCP completed … rebooting … wait for reconnect..."
+echo "SCP completed … rebooting … "
 sshpass -e ssh $SSH_OPTS -t root@"$IP" 'reboot' 2>&1 | grep -v debug1 || true
 
 # ── Local side: copy VRX files ────────────────────────────────────────────────
@@ -93,15 +99,8 @@ chmod +x alink_install.sh
 ./alink_install.sh gs remove
 ./alink_install.sh gs install
 
-# ── Countdown before reconnect ────────────────────────────────────────────────
-echo "Reconnecting in 25 s..."
-for i in $(seq 30 -1 1); do
-    printf "\r%d seconds remaining..." "$i"
-    sleep 1
-done
-echo ""
-
-# ── Interactive SSH session ───────────────────────────────────────────────────
-sshpass -e ssh $SSH_OPTS root@"$IP"
+echo -e "\n\nRemember to set:\n\nwlan_adapter\nalink\nstbc and ldpc\n\n...in /etc/wfb.yaml\n"
+echo -e "VTX rebooting...  Consider debug via Ethernet if connection lost\n\n"
 
 exit 0
+
