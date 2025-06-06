@@ -9,7 +9,7 @@
 
 OTA (Over The Air). Power up VTX (drone) and VRX (gs).  Connect VRX (gs) to Internet. ssh to VRX (gs) and paste the following
 ```
-#Run on VRX (gs) connected to Internet
+#Run on VRX (gs) connected to Internet - With VTX (drone) powered on
 git clone https://github.com/sickgreg/OpenIPC-air_manager
 cd OpenIPC-air_manager
 chmod +x install.sh
