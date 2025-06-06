@@ -6,7 +6,7 @@
 
 ## 📁 Pre-release Installation (sbc v2.0.0b required for gs rec-fps updating - but not critical)
 
-
+Consider `sysupgrade -k -r -n` first...
 OTA (Over The Air). Power up VTX (drone) and VRX (gs).  Connect VRX (gs) to Internet. ssh to VRX (gs) and paste the following
 ```
 #Run on VRX (gs) connected to Internet - With VTX (drone) powered on
