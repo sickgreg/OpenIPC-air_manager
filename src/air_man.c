@@ -109,13 +109,13 @@ static int airman_send_set_power(int new_level) {
     return ntohl(net_status);  // 0=OK, 1=out-of-range
 }
 
-// Updates the alink config file’s power_level_0_to_10 via sed.
+// Updates the alink config file’s power_level_0_to_4 via sed.
 // Returns 0 on success, nonzero on failure.
 static int update_alink_config_power(int new_level) {
     char cmd[256];
-    // assumes a line like "power_level_0_to_10=5"
+    // assumes a line like "power_level_0_to_4=5"
     snprintf(cmd, sizeof(cmd),
-      "sed -i 's/^power_level_0_to_10=[0-9]\\+/power_level_0_to_10=%d/' %s",
+      "sed -i 's/^power_level_0_to_4=[0-9]\\+/power_level_0_to_4=%d/' %s",
       new_level, ALINK_CONFIG_FILE);
     return system(cmd);
 }
